@@ -5,6 +5,10 @@
 const Composable = artifacts.require("./Composable.sol");
 const SampleNFT = artifacts.require("./SampleNFT.sol");
 
+//tools for overloaded functions
+const web3Abi = require('web3-eth-abi');
+const web3Utils = require('web3-utils');
+
 /**************************************
 * Helpers
 **************************************/
@@ -46,17 +50,29 @@ contract('Composable', function(accounts) {
     const tx = await sampleNFT.mint721(alice);
   });
   
-  it('should approve transfers from composable.address', async () => {
-    const approved = await sampleNFT.approve.call(composable.address, 1);
-    assert(approved, 'transfer not approved');
-    const tx = await sampleNFT.approve(composable.address, 1);
+  
+  
+  
+  it('should safeTransferFrom', async () => {
+    //the call to overloaded function (thanks truffle / Consensys... ugh!)
+    //parent tokenId is a string because it's passed as bytes data
+    // const tokenId = await sampleNFT.contract.safeTransferFrom['address,address,uint256,bytes']
+    //   .call(alice, composable.address, 1, "1");
+    //the tx
+    
+    //console.log(SampleNFT.abi);
+    
+    const transferMethodTransactionData = web3Abi.encodeFunctionCall(
+      SampleNFT.abi[13], [alice, composable.address, 1, web3Utils.fromAscii("1")]
+    );
+    const tx = await web3.eth.sendTransaction({
+      from: alice, to: sampleNFT.address, data: transferMethodTransactionData, value: 0, gas: 500000
+    });
+    assert(tx != undefined, 'no tx using safeTransferFrom');
   });
   
-  it('should add child NFT to composable', async () => {
-    const added = await composable.addChild.call(1, sampleNFT.address, 1);
-    assert(added, 'child not added');
-    const tx = await composable.addChild(1, sampleNFT.address, 1);
-  });
+  
+  
   
   it('should own sampleNFT, Composable', async () => {
     const address = await sampleNFT.ownerOf.call(1);
@@ -76,7 +92,6 @@ contract('Composable', function(accounts) {
   
   it('should transfer child to alice', async () => {
     const success = await composable.transferChild.call(alice, 1, sampleNFT.address, 1, { from: bob });
-    console.log(success);
     assert(success, 'transfer did not work');
     const tx = await composable.transferChild(alice, 1, sampleNFT.address, 1, { from: bob });
   });
@@ -86,11 +101,6 @@ contract('Composable', function(accounts) {
     assert(address == alice, 'alice does not own sampleNFT');
   });
   
-  it('should own the composable, Bob', async () => {
-    const address = await composable.ownerOf.call(1);
-    assert(address == bob, 'composable not owned by bob');
-  });
-
 });
 
 //jshint ignore: end

@@ -6,7 +6,7 @@ pragma solidity ^0.4.21;
 
 import 'zeppelin-solidity/contracts/token/ERC721/ERC721Token.sol';
 
-contract Composable is ERC721Token {
+contract Composable is ERC721Token, ERC721Receiver {
   
   /**************************************
   * ERC-721 Setup Methods for Testing
@@ -25,68 +25,47 @@ contract Composable is ERC721Token {
     return(tokenOwner[_tokenId] == _claimant);
   }
   
+  function bytesToUint(bytes b) internal pure returns (uint256 result) {
+    uint256 i;
+    result = 0;
+    for (i = 0; i < b.length; i++) {
+      uint256 c = uint256(b[i]);
+      if (c >= 48 && c <= 57) {
+        result = result * 10 + (c - 48);
+      }
+    }
+  }
+  
   /**************************************
   * ERC-998 Begin Composable Methods
   **************************************/
   
   /// tokenId of composable, mapped to child contract address
   /// child contract address mapped to child tokenId or amount
-  mapping(uint256 => mapping(address => uint256)) children;
+  mapping(uint256 => mapping(address => bool)) nonfungiblePossessions;
+  mapping(uint256 => mapping(address => uint256)) fungiblePossessions;
   
-  /**************************************
-  * Adding Children
-  **************************************/
-  
-  /// add ERC-721 children by tokenId
-  /// requires owner to approve transfer from this contract
-  /// call _childContract.approve(this, _childTokenId)
-  /// where this is the address of the parent token contract
-  function addChild(
-    uint256 _tokenId,
-    address _childContract,
-    uint256 _childTokenId
-  ) public {
-    // call the transfer function of the child contract
-    // if approve was called using the address of this contract
-    // _childTokenId will be transferred to this contract
-    require(
-      _childContract.call(
-        bytes4(keccak256("transferFrom(address,address,uint256)")),
-        msg.sender, this, _childTokenId
-      )
-    );
-    // if successful, add children to the mapping
-    // use pseudo address
-    address childToken = address(keccak256(_childContract, _childTokenId));
-    children[_tokenId][childToken] = 1;
-  }
-  
-  /// add ERC-20 children by amount
-  /// requires owner to approve transfer from this contract
-  /// call _childContract.approve(this, _amount)
-  function addChildAmount(
-    uint256 _tokenId,
-    address _childContract,
-    uint256 _amount
-  ) public {
-    // call the transfer function of the child contract
-    // if approve was called with the address of this contract
-    // _amount of child tokens will be transferred to the contract
-    require(
-      _childContract.call(
-        bytes4(keccak256("transferFrom(address,address,uint256)")),
-        msg.sender, this, _amount
-      )
-    );
-    // if successful, add children to the mapping
-    children[_tokenId][_childContract] += _amount;
+  function _nonfungibleAddress(
+    address _childContract, uint256 _childTokenId
+  ) internal pure returns (address) {
+    return address(keccak256(_childContract, _childTokenId));
   }
   
   /**************************************
-  * Transferring Children
+  * ERC-721 Non-Fungible Possessions
   **************************************/
   
-  /// transfer ERC-721 child by _childTokenId
+  //adding nonfungible possessions
+  //receives _data which determines which NFT composable of this contract the possession will belong to
+  function onERC721Received(address _from, uint256 _tokenId, bytes _data) public returns(bytes4) {
+    //convert _data bytes to uint256, assuming tokens were passed in as string data
+    // i.e. tokenId = 5 would be "5" coming from web3 or another contract
+    uint256 id = bytesToUint(_data);
+    nonfungiblePossessions[id][_nonfungibleAddress(msg.sender, _tokenId)] = true;
+    return ERC721_RECEIVED;
+  }
+  
+  //transfer the ERC-721
   function transferChild(
     address _to,
     uint256 _tokenId,
@@ -96,42 +75,66 @@ contract Composable is ERC721Token {
     // require ownership of parent token &&
     // check parent token owns the child token
     // use the 'pseudo address' for the specific child tokenId
-    address childToken = address(keccak256(_childContract, _childTokenId));
+    address childToken = _nonfungibleAddress(_childContract, _childTokenId);
     require(_owns(msg.sender, _tokenId));
-    require(children[_tokenId][childToken] == 1);
+    require(nonfungiblePossessions[_tokenId][childToken] == true);
     require(
       _childContract.call(
         // if true, transfer the child token
         // not a delegate call, the child token is owned by this contract
-        bytes4(keccak256("transferFrom(address,address,uint256)")),
+        bytes4(keccak256("safeTransferFrom(address,address,uint256)")),
         this, _to, _childTokenId
       )
     );
     // remove the parent token's ownership of the child token
-    children[_tokenId][childToken] = 0;
+    nonfungiblePossessions[_tokenId][childToken] = false;
   }
   
-  /// transfer ERC-20 child by _amount
-  function transferChildAmount(
-    address _to,
-    uint256 _tokenId,
-    address _childContract,
-    uint256 _amount
-  ) public {
-    // require ownership of parent token &&
-    // check parent token owns enough balance of the child tokens
-    require(_owns(msg.sender, _tokenId));
-    require(children[_tokenId][_childContract] == _amount);
-    require(
-      _childContract.call(
-        // if true, transfer the child tokens
-        // not a delegate call, the child tokens are owned by this contract
-        bytes4(keccak256("transfer(address,uint256)")),
-        _to, _amount
-      )
-    );
-    //decrement the parent token's balance of child tokens by _amount
-    children[_tokenId][_childContract] -= _amount;
-  }
+  
+  
+  // /// add ERC-20 children by amount
+  // /// requires owner to approve transfer from this contract
+  // /// call _childContract.approve(this, _amount)
+  // function addChildAmount(
+  //   uint256 _tokenId,
+  //   address _childContract,
+  //   uint256 _amount
+  // ) public {
+  //   // call the transfer function of the child contract
+  //   // if approve was called with the address of this contract
+  //   // _amount of child tokens will be transferred to the contract
+  //   require(
+  //     _childContract.call(
+  //       bytes4(keccak256("transferFrom(address,address,uint256)")),
+  //       msg.sender, this, _amount
+  //     )
+  //   );
+  //   // if successful, add children to the mapping
+  //   children[_tokenId][_childContract] += _amount;
+  // }
+  
+  
+  // /// transfer ERC-20 child by _amount
+  // function transferChildAmount(
+  //   address _to,
+  //   uint256 _tokenId,
+  //   address _childContract,
+  //   uint256 _amount
+  // ) public {
+  //   // require ownership of parent token &&
+  //   // check parent token owns enough balance of the child tokens
+  //   require(_owns(msg.sender, _tokenId));
+  //   require(children[_tokenId][_childContract] == _amount);
+  //   require(
+  //     _childContract.call(
+  //       // if true, transfer the child tokens
+  //       // not a delegate call, the child tokens are owned by this contract
+  //       bytes4(keccak256("transfer(address,uint256)")),
+  //       _to, _amount
+  //     )
+  //   );
+  //   //decrement the parent token's balance of child tokens by _amount
+  //   children[_tokenId][_childContract] -= _amount;
+  // }
   
 }
