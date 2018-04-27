@@ -25,17 +25,6 @@ contract Composable is ERC721Token, ERC721Receiver {
     return(tokenOwner[_tokenId] == _claimant);
   }
   
-  function bytesToUint(bytes b) internal pure returns (uint256 result) {
-    uint256 i;
-    result = 0;
-    for (i = 0; i < b.length; i++) {
-      uint256 c = uint256(b[i]);
-      if (c >= 48 && c <= 57) {
-        result = result * 10 + (c - 48);
-      }
-    }
-  }
-  
   /**************************************
   * ERC-998 Begin Composable Methods
   **************************************/
@@ -44,6 +33,16 @@ contract Composable is ERC721Token, ERC721Receiver {
   /// child contract address mapped to child tokenId or amount
   mapping(uint256 => mapping(address => bool)) nonfungiblePossessions;
   mapping(uint256 => mapping(address => uint256)) fungiblePossessions;
+  
+  function bytesToUint(bytes b) internal pure returns (uint256 result) {
+    result = 0;
+    for (uint256 i = 0; i < b.length; i++) {
+      uint256 c = uint256(b[i]);
+      if (c >= 48 && c <= 57) {
+        result = result * 10 + (c - 48);
+      }
+    }
+  }
   
   function _nonfungibleAddress(
     address _childContract, uint256 _childTokenId

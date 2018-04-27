@@ -2,10 +2,11 @@
 
 //jshint ignore: start
 
+/// contracts
 const Composable = artifacts.require("./Composable.sol");
 const SampleNFT = artifacts.require("./SampleNFT.sol");
 
-//tools for overloaded functions
+/// tools for overloaded function calls
 const web3Abi = require('web3-eth-abi');
 const web3Utils = require('web3-utils');
 
@@ -20,7 +21,6 @@ const promisify = (inner) => new Promise((resolve, reject) =>
 );
 const getBalance = (account, at) => promisify(cb => web3.eth.getBalance(account, at, cb));
 const timeout = ms => new Promise(res => setTimeout(res, ms))
-
 /**************************************
 * Tests
 **************************************/
@@ -50,18 +50,11 @@ contract('Composable', function(accounts) {
     const tx = await sampleNFT.mint721(alice);
   });
   
-  
-  
-  
   it('should safeTransferFrom', async () => {
-    //the call to overloaded function (thanks truffle / Consensys... ugh!)
-    //parent tokenId is a string because it's passed as bytes data
-    // const tokenId = await sampleNFT.contract.safeTransferFrom['address,address,uint256,bytes']
-    //   .call(alice, composable.address, 1, "1");
-    //the tx
+    // HAD TO HAND ROLL THIS TEST BECAUSE TRUFFLE SUCKS!!!
+    // no call support to overloaded functions (thanks truffle / Consensys... ugh!)
     
-    //console.log(SampleNFT.abi);
-    
+    // parent tokenId is a string because it's passed as bytes data
     const transferMethodTransactionData = web3Abi.encodeFunctionCall(
       SampleNFT.abi[13], [alice, composable.address, 1, web3Utils.fromAscii("1")]
     );
@@ -70,9 +63,6 @@ contract('Composable', function(accounts) {
     });
     assert(tx != undefined, 'no tx using safeTransferFrom');
   });
-  
-  
-  
   
   it('should own sampleNFT, Composable', async () => {
     const address = await sampleNFT.ownerOf.call(1);
