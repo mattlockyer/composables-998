@@ -29,8 +29,6 @@ contract Composable is ERC721Token, ERC721Receiver {
   * ERC-998 Begin Composable Methods
   **************************************/
   
-  /// tokenId of composable, mapped to child contract address
-  /// child contract address mapped to child tokenId or amount
   mapping(uint256 => mapping(address => bool)) nonfungiblePossessions;
   mapping(uint256 => mapping(address => uint256)) fungiblePossessions;
   
@@ -89,7 +87,9 @@ contract Composable is ERC721Token, ERC721Receiver {
     nonfungiblePossessions[_tokenId][childToken] = false;
   }
   
-  
+  /**************************************
+  * ERC-20 on hold until a good approach to 721 is established. Getting close.
+  **************************************/
   
   // /// add ERC-20 children by amount
   // /// requires owner to approve transfer from this contract
