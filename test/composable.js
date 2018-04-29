@@ -53,7 +53,6 @@ contract('Composable', function(accounts) {
   it('should safeTransferFrom', async () => {
     // HAD TO HAND ROLL THIS TEST BECAUSE TRUFFLE SUCKS!!!
     // no call support to overloaded functions (thanks truffle / Consensys... ugh!)
-    
     // parent tokenId is a string because it's passed as bytes data
     const transferMethodTransactionData = web3Abi.encodeFunctionCall(
       SampleNFT.abi[13], [alice, composable.address, 1, web3Utils.fromAscii("1")]
@@ -67,6 +66,16 @@ contract('Composable', function(accounts) {
   it('should own sampleNFT, Composable', async () => {
     const address = await sampleNFT.ownerOf.call(1);
     assert(address == composable.address, 'composable does not own sampleNFT');
+  });
+  
+  it('should have 1 nftp contract address sampleNFT', async () => {
+    const contracts = await composable.possessionContractsOwnedBy.call(1);
+    assert(contracts[0] === sampleNFT.address, 'composable does not have the right nftps contract');
+  });
+  
+  it('should have 1 nftp in Composable of tokenId 1', async () => {
+    const num = await composable.nftpsOwnedBy.call(1, sampleNFT.address);
+    assert(num.length === 1 && num[0].equals(1), 'composable does not own right nftps');
   });
   
   it('should transfer composable to bob', async () => {
