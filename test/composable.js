@@ -68,16 +68,22 @@ contract('Composable', function(accounts) {
     assert(address == composable.address, 'composable does not own sampleNFT');
   });
   
+  /**************************************
+  * Checking array, should have added sampleNFT after transfer
+  **************************************/
   it('should have 1 nftp contract address sampleNFT', async () => {
-    const contracts = await composable.possessionContractsOwnedBy.call(1);
+    const contracts = await composable.nftpContractsOwnedBy.call(1);
     assert(contracts[0] === sampleNFT.address, 'composable does not have the right nftps contract');
   });
   
-  it('should have 1 nftp in Composable of tokenId 1', async () => {
+  it('should have 1 nftp of type sampleNFT in Composable of tokenId 1', async () => {
     const num = await composable.nftpsOwnedBy.call(1, sampleNFT.address);
     assert(num.length === 1 && num[0].equals(1), 'composable does not own right nftps');
   });
   
+  /**************************************
+  * Transferring
+  **************************************/
   it('should transfer composable to bob', async () => {
     const success = await composable.transferFrom.call(alice, bob, 1);
     assert(success, 'transfer did not work');
@@ -90,14 +96,27 @@ contract('Composable', function(accounts) {
   });
   
   it('should transfer child to alice', async () => {
-    const success = await composable.transferChild.call(alice, 1, sampleNFT.address, 1, { from: bob });
+    const success = await composable.transferNFTP.call(alice, 1, sampleNFT.address, 1, { from: bob });
     assert(success, 'transfer did not work');
-    const tx = await composable.transferChild(alice, 1, sampleNFT.address, 1, { from: bob });
+    const tx = await composable.transferNFTP(alice, 1, sampleNFT.address, 1, { from: bob });
   });
   
   it('should own sampleNFT, alice', async () => {
     const address = await sampleNFT.ownerOf.call(1);
     assert(address == alice, 'alice does not own sampleNFT');
+  });
+  
+  /**************************************
+  * Checking arrays, should be removed from transfer
+  **************************************/
+  it('should NOT have a sampleNFT contract', async () => {
+    const contracts = await composable.nftpContractsOwnedBy.call(1, { from: bob });
+    assert(contracts.length === 0, 'composable still has contract in array');
+  });
+  
+  it('should NOT have an nftp', async () => {
+    const num = await composable.nftpsOwnedBy.call(1, sampleNFT.address, { from: bob });
+    assert(num.length === 0, 'composable still has nftp in array');
   });
   
 });

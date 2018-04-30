@@ -45,10 +45,16 @@ contract Composable is ERC721Token, ERC721Receiver {
    **************************************/
   
   // mapping from nft to all ftp and nftp contracts
-  mapping(uint256 => address[]) public nftpContracts;
+  mapping(uint256 => address[]) nftpContracts;
+  
+  // mapping for the nftp contract index
+  mapping(uint256 => mapping(address => uint256)) nftpContractIndex;
   
   // mapping from contract pseudo-address owner nftp to the tokenIds
   mapping(address => uint256[]) nftpTokens;
+  
+  // mapping from pseudo owner address to nftpTokenId to array index
+  mapping(address => mapping(uint256 => uint256)) nftpTokenIndex;
   
   // mapping NFTP pseudo-address to bool
   mapping(address => bool) nftpOwned;
@@ -88,20 +94,22 @@ contract Composable is ERC721Token, ERC721Receiver {
     // convert _data bytes to uint256, owner nft tokenId passed as string in bytes
     // bytesToUint(_data)
     // i.e. tokenId = 5 would be "5" coming from web3 or another contract
-    
     uint256 ownerTokenId = bytesToUint(_data);
-    
-    // log the nftp contract and tokenId
+    // log the nftp contract and index
+    nftpContractIndex[ownerTokenId][msg.sender] = nftpContracts[ownerTokenId].length;
     nftpContracts[ownerTokenId].push(msg.sender);
-    nftpTokens[_nftpOwner(ownerTokenId, msg.sender)].push(_tokenId);
-    
+    // log the tokenId and index
+    address nftpOwner = _nftpOwner(ownerTokenId, msg.sender);
+    nftpTokenIndex[nftpOwner][_tokenId] = nftpTokens[nftpOwner].length;
+    nftpTokens[nftpOwner].push(_tokenId);
+    // set bool of owned to true
     nftpOwned[_nftpAddress(ownerTokenId, msg.sender, _tokenId)] = true;
-    
+    // return safely from callback of nft
     return ERC721_RECEIVED;
   }
   
   //transfer the ERC-721
-  function transferChild(
+  function transferNFTP(
     address _to,
     uint256 _tokenId,
     address _nftpContract,
@@ -111,6 +119,8 @@ contract Composable is ERC721Token, ERC721Receiver {
     // check parent token owns the child token
     // use the 'pseudo address' for the specific child tokenId
     address nftp = _nftpAddress(_tokenId, _nftpContract, _nftpTokenId);
+    
+    // require
     require(_owns(msg.sender, _tokenId));
     require(nftpOwned[nftp] == true);
     require(
@@ -123,10 +133,29 @@ contract Composable is ERC721Token, ERC721Receiver {
     );
     // remove the parent token's ownership of the child token
     nftpOwned[nftp] = false;
-    //remove from array
-    nftpTokens[_nftpOwner(ownerTokenId, msg.sender)].push(_tokenId);
-    //check if last
-    nftpContracts[ownerTokenId].push(msg.sender);
+    
+    // remove the nftp contract and index
+    uint256 contractIndex = nftpContractIndex[_tokenId][_nftpContract];
+    uint256 lastContractIndex = nftpContracts[_tokenId].length.sub(1);
+    address lastContract = nftpContracts[_tokenId][lastContractIndex];
+    nftpContracts[_tokenId][contractIndex] = lastContract;
+    nftpContracts[_tokenId][lastContractIndex] = 0;
+    nftpContracts[_tokenId].length--;
+    nftpContractIndex[_tokenId][_nftpContract] = 0;
+    nftpContractIndex[_tokenId][lastContract] = contractIndex;
+    
+    // _nftpOwner is _tokenId and _nftpContract pseudo address
+    address nftpOwner = _nftpOwner(_tokenId, _nftpContract);
+    // remove the nftp token and index
+    uint256 tokenIndex = nftpTokenIndex[nftpOwner][_nftpTokenId];
+    uint256 lastTokenIndex = nftpTokens[nftpOwner].length.sub(1);
+    uint256 lastToken = nftpTokens[nftpOwner][lastTokenIndex];
+    nftpTokens[nftpOwner][tokenIndex] = lastToken;
+    nftpTokens[nftpOwner][lastTokenIndex] = 0;
+    nftpTokens[nftpOwner].length--;
+    nftpTokenIndex[nftpOwner][_nftpTokenId] = 0;
+    nftpTokenIndex[nftpOwner][lastToken] = tokenIndex;
+    
   }
   
   
