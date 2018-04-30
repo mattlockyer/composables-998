@@ -76,10 +76,12 @@ contract Composable is ERC721Token, ERC721Receiver {
     return address(keccak256(_tokenId, _nftpContract, _nftpTokenId));
   }
   
+  // returns the nftp contracts owned by a composable
   function nftpContractsOwnedBy(uint256 _tokenId) public view returns (address[]) {
     return nftpContracts[_tokenId];
   }
   
+  // returns the nftps owned by the composable for a specific nftp contract
   function nftpsOwnedBy(uint256 _tokenId, address _nftpContract) public view returns (uint256[]) {
     return nftpTokens[_nftpOwner(_tokenId, _nftpContract)];
   }
@@ -108,7 +110,7 @@ contract Composable is ERC721Token, ERC721Receiver {
     return ERC721_RECEIVED;
   }
   
-  //transfer the ERC-721
+  // transfer the ERC-721
   function transferNFTP(
     address _to,
     uint256 _tokenId,
