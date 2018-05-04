@@ -41,7 +41,7 @@ contract Composable is ERC721Token, ERC721Receiver {
   }
 
   /**************************************
-   * ERC-998 Begin Composable Methods
+   * ERC-998 Begin Composable
    **************************************/
   
   // mapping from nft to all ftp and nftp contracts
@@ -59,6 +59,20 @@ contract Composable is ERC721Token, ERC721Receiver {
   // mapping NFTP pseudo-address to bool
   mapping(address => bool) nftpOwned;
   
+  /**************************************
+  * Events
+  **************************************/
+  
+  event Received(address _from, uint256 _nftpTokenId, bytes _data);
+  
+  event Added(uint256 _tokenId, address _nftpContract, uint256 _nftpTokenId);
+  
+  event TransferNFTP(address _from, address _to, uint256 _nftpTokenId);
+  
+  /**************************************
+  * Utility Methods
+  **************************************/
+
   // generates a pseudo-address from the nft that owns, nftp contract
   function _nftpOwner(
     uint256 _tokenId,
@@ -76,6 +90,34 @@ contract Composable is ERC721Token, ERC721Receiver {
     return address(keccak256(_tokenId, _nftpContract, _nftpTokenId));
   }
   
+  // removes ftp/nftp contract from list of possession contracts
+  function _removeContract(uint256 _tokenId, address _nftpContract) internal {
+    uint256 contractIndex = nftpContractIndex[_tokenId][_nftpContract];
+    uint256 lastContractIndex = nftpContracts[_tokenId].length.sub(1);
+    address lastContract = nftpContracts[_tokenId][lastContractIndex];
+    nftpContracts[_tokenId][contractIndex] = lastContract;
+    nftpContracts[_tokenId][lastContractIndex] = 0;
+    nftpContracts[_tokenId].length--;
+    nftpContractIndex[_tokenId][_nftpContract] = 0;
+    nftpContractIndex[_tokenId][lastContract] = contractIndex;
+  }
+  
+  // removes nftp from list of possessions
+  function _removeNFTP(address nftpOwner, uint256 _nftpTokenId) internal {
+    uint256 tokenIndex = nftpTokenIndex[nftpOwner][_nftpTokenId];
+    uint256 lastTokenIndex = nftpTokens[nftpOwner].length.sub(1);
+    uint256 lastToken = nftpTokens[nftpOwner][lastTokenIndex];
+    nftpTokens[nftpOwner][tokenIndex] = lastToken;
+    nftpTokens[nftpOwner][lastTokenIndex] = 0;
+    nftpTokens[nftpOwner].length--;
+    nftpTokenIndex[nftpOwner][_nftpTokenId] = 0;
+    nftpTokenIndex[nftpOwner][lastToken] = tokenIndex;
+  }
+  
+  /**************************************
+  * Public View Methods (wallet integration)
+  **************************************/
+  
   // returns the nftp contracts owned by a composable
   function nftpContractsOwnedBy(uint256 _tokenId) public view returns (address[]) {
     return nftpContracts[_tokenId];
@@ -87,78 +129,88 @@ contract Composable is ERC721Token, ERC721Receiver {
   }
   
   /**************************************
-  * ERC-721 Non-Fungible Possessions
+  * Composition of ERC-721/998 NFTs
   **************************************/
   
   // adding nonfungible possessions
   // receives _data which determines which NFT composable of this contract the possession will belong to
-  function onERC721Received(address _from, uint256 _tokenId, bytes _data) public returns(bytes4) {
-    // convert _data bytes to uint256, owner nft tokenId passed as string in bytes
-    // bytesToUint(_data)
-    // i.e. tokenId = 5 would be "5" coming from web3 or another contract
-    uint256 ownerTokenId = bytesToUint(_data);
-    // log the nftp contract and index
-    nftpContractIndex[ownerTokenId][msg.sender] = nftpContracts[ownerTokenId].length;
-    nftpContracts[ownerTokenId].push(msg.sender);
-    // log the tokenId and index
-    address nftpOwner = _nftpOwner(ownerTokenId, msg.sender);
-    nftpTokenIndex[nftpOwner][_tokenId] = nftpTokens[nftpOwner].length;
-    nftpTokens[nftpOwner].push(_tokenId);
-    // set bool of owned to true
-    nftpOwned[_nftpAddress(ownerTokenId, msg.sender, _tokenId)] = true;
-    // return safely from callback of nft
+  function onERC721Received(address _from, uint256 _nftpTokenId, bytes _data) public returns(bytes4) {
+    handleReceived(msg.sender, _nftpTokenId, _data);
     return ERC721_RECEIVED;
   }
   
-  // transfer the ERC-721
+  // internal call from composable safeTransferNFTP
+  function fromComposable(address _from, uint256 _nftpTokenId, bytes _data) internal {
+    handleReceived(_from, _nftpTokenId, _data);
+  }
+  
+  function handleReceived(address _from, uint256 _nftpTokenId, bytes _data) internal {
+    // convert _data bytes to uint256, owner nft tokenId passed as string in bytes
+    // bytesToUint(_data)
+    // i.e. tokenId = 5 would be "5" coming from web3 or another contract
+    uint256 _tokenId = bytesToUint(_data);
+    
+    //*** BUG *** Extra call comes through with bytes == 0x0 when safeTransferFrom Composable to Composable
+    if (_tokenId == 0) return;
+    
+    // log the nftp contract and index
+    nftpContractIndex[_tokenId][_from] = nftpContracts[_tokenId].length;
+    nftpContracts[_tokenId].push(_from);
+    // log the tokenId and index
+    address nftpOwner = _nftpOwner(_tokenId, _from);
+    nftpTokenIndex[nftpOwner][_nftpTokenId] = nftpTokens[nftpOwner].length;
+    nftpTokens[nftpOwner].push(_nftpTokenId);
+    // set bool of owned to true
+    nftpOwned[_nftpAddress(_tokenId, _from, _nftpTokenId)] = true;
+    // emit event
+    emit Added(_tokenId, _from, _nftpTokenId);
+    // return safely from callback of nft
+  }
+  
+  /**************************************
+  * Transfer of ERC-721/998 NFTs (decomposition)
+  **************************************/
+  
   function transferNFTP(
     address _to,
     uint256 _tokenId,
     address _nftpContract,
     uint256 _nftpTokenId
   ) public {
-    // require ownership of parent token &&
-    // check parent token owns the child token
-    // use the 'pseudo address' for the specific child tokenId
-    address nftp = _nftpAddress(_tokenId, _nftpContract, _nftpTokenId);
     
-    // require
+    // require that the composable nft is owned by sender
     require(_owns(msg.sender, _tokenId));
+    // get the pseudo address of the nftp from the composable owner, nftp contract and nftp tokenId
+    address nftp = _nftpAddress(_tokenId, _nftpContract, _nftpTokenId);
+    //require that the nftp is owned
     require(nftpOwned[nftp] == true);
+    //require that the nftp was transfered safely to it's destination
     require(
       _nftpContract.call(
-        // if true, transfer the child token
-        // not a delegate call, the child token is owned by this contract
         bytes4(keccak256("safeTransferFrom(address,address,uint256)")),
         this, _to, _nftpTokenId
       )
     );
     // remove the parent token's ownership of the child token
     nftpOwned[nftp] = false;
-    
     // remove the nftp contract and index
-    uint256 contractIndex = nftpContractIndex[_tokenId][_nftpContract];
-    uint256 lastContractIndex = nftpContracts[_tokenId].length.sub(1);
-    address lastContract = nftpContracts[_tokenId][lastContractIndex];
-    nftpContracts[_tokenId][contractIndex] = lastContract;
-    nftpContracts[_tokenId][lastContractIndex] = 0;
-    nftpContracts[_tokenId].length--;
-    nftpContractIndex[_tokenId][_nftpContract] = 0;
-    nftpContractIndex[_tokenId][lastContract] = contractIndex;
-    
+    _removeContract(_tokenId, _nftpContract);
     // _nftpOwner is _tokenId and _nftpContract pseudo address
     address nftpOwner = _nftpOwner(_tokenId, _nftpContract);
-    // remove the nftp token and index
-    uint256 tokenIndex = nftpTokenIndex[nftpOwner][_nftpTokenId];
-    uint256 lastTokenIndex = nftpTokens[nftpOwner].length.sub(1);
-    uint256 lastToken = nftpTokens[nftpOwner][lastTokenIndex];
-    nftpTokens[nftpOwner][tokenIndex] = lastToken;
-    nftpTokens[nftpOwner][lastTokenIndex] = 0;
-    nftpTokens[nftpOwner].length--;
-    nftpTokenIndex[nftpOwner][_nftpTokenId] = 0;
-    nftpTokenIndex[nftpOwner][lastToken] = tokenIndex;
+    _removeNFTP(nftpOwner, _nftpTokenId);
     
+    emit TransferNFTP(this, _to, _nftpTokenId);
   }
   
+  function safeTransferNFTP(
+    address _to,
+    uint256 _tokenId,
+    address _nftpContract,
+    uint256 _nftpTokenId,
+    bytes _data
+  ) public {
+    transferNFTP(_to, _tokenId, _nftpContract, _nftpTokenId);
+    fromComposable(_nftpContract, _nftpTokenId, _data);
+  }
   
 }
