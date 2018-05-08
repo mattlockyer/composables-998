@@ -149,10 +149,6 @@ contract Composable is ERC721Token, ERC721Receiver {
     // bytesToUint(_data)
     // i.e. tokenId = 5 would be "5" coming from web3 or another contract
     uint256 _tokenId = bytesToUint(_data);
-    
-    //*** BUG *** Extra call comes through with bytes == 0x0 when safeTransferFrom Composable to Composable
-    if (_tokenId == 0) return;
-    
     // log the nftp contract and index
     nftpContractIndex[_tokenId][_from] = nftpContracts[_tokenId].length;
     nftpContracts[_tokenId].push(_from);
