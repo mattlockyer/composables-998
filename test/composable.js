@@ -82,6 +82,7 @@ contract('Composable', function(accounts) {
     // HAD TO HAND ROLL THIS TEST BECAUSE TRUFFLE SUCKS!!!
     // no call support to overloaded functions (thanks truffle / Consensys... ugh!)
     // parent tokenId is a string because it's passed as bytes data
+    // safeTransferFrom is index 13 on zeppelin ERC721
     const transferMethodTransactionData = web3Abi.encodeFunctionCall(
       SampleNFT.abi[13], [alice, composable.address, 1, web3Utils.fromAscii("1")]
     );
@@ -92,8 +93,8 @@ contract('Composable', function(accounts) {
   });
   
   it('should own sampleNFT, Composable', async () => {
-    const address = await sampleNFT.ownerOf.call(1);
-    assert(address == composable.address, 'composable does not own sampleNFT');
+    const owned = await composable.nftpIsOwned(1, sampleNFT.address, 1);
+    assert(owned, 'composable does not own sampleNFT');
   });
   
   /**************************************
@@ -126,9 +127,9 @@ contract('Composable', function(accounts) {
   });
   
   it('should transfer nftp to alice', async () => {
-    const success = await composable.transferNFTP.call(alice, 1, sampleNFT.address, 1, { from: bob });
+    const success = await composable.safeTransferNFTP.call(alice, 1, sampleNFT.address, 1, "1", { from: bob });
     assert(success, 'transfer did not work');
-    const tx = await composable.transferNFTP(alice, 1, sampleNFT.address, 1, { from: bob });
+    const tx = await composable.safeTransferNFTP(alice, 1, sampleNFT.address, 1, "1", { from: bob });
   });
   
   it('should own sampleNFT, alice', async () => {
@@ -210,8 +211,9 @@ contract('Composable', function(accounts) {
   // **************************************/
   
   it('should safeTransferFrom Composable "2" to Composable "1"', async () => {
+    // safeTransferFrom is index 16 on Composable abi
     const transferMethodTransactionData = web3Abi.encodeFunctionCall(
-      Composable.abi[13], [alice, composable.address, 2, bytes1 ]
+      Composable.abi[16], [alice, composable.address, 2, bytes1 ]
     );
     const tx = await web3.eth.sendTransaction({
       from: alice, to: composable.address, data: transferMethodTransactionData, value: 0, gas: 500000
