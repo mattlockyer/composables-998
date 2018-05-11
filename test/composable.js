@@ -5,6 +5,7 @@
 // contracts
 const Composable = artifacts.require("./Composable.sol");
 const SampleNFT = artifacts.require("./SampleNFT.sol");
+const SampleERC20 = artifacts.require("./SampleERC20.sol");
 
 // tools for overloaded function calls
 const web3Abi = require('web3-eth-abi');
@@ -41,7 +42,7 @@ const timeout = ms => new Promise(res => setTimeout(res, ms))
 
 contract('Composable', function(accounts) {
   
-  let composable, sampleNFT, alice = accounts[0], bob = accounts[1];
+  let composable, sampleNFT, sampleERC20, alice = accounts[0], bob = accounts[1];
   
   const bytes1 = web3Utils.fromAscii("1", 32);
   const bytes2 = web3Utils.fromAscii("2", 32);
@@ -66,6 +67,11 @@ contract('Composable', function(accounts) {
     assert(sampleNFT !== undefined, 'SampleNFT was not deployed');
   });
   
+  it('should be deployed, SampleERC20', async () => {
+    sampleERC20 = await SampleERC20.deployed();
+    assert(sampleERC20 !== undefined, 'SampleERC20 was not deployed');
+  });
+  
   it('should mint a 721 token, Composable', async () => {
     const tokenId = await composable.mint721.call(alice);
     assert(tokenId.equals(1), 'Composable 721 token was not created or has wrong tokenId');
@@ -83,8 +89,10 @@ contract('Composable', function(accounts) {
     // no call support to overloaded functions (thanks truffle / Consensys... ugh!)
     // parent tokenId is a string because it's passed as bytes data
     // safeTransferFrom is index 13 on zeppelin ERC721
+    const safeTransferFrom = SampleNFT.abi.filter(f => f.name === 'safeTransferFrom' && f.inputs.length === 4)[0];
+    
     const transferMethodTransactionData = web3Abi.encodeFunctionCall(
-      SampleNFT.abi[13], [alice, composable.address, 1, web3Utils.fromAscii("1")]
+      safeTransferFrom, [alice, composable.address, 1, web3Utils.fromAscii("1")]
     );
     const tx = await web3.eth.sendTransaction({
       from: alice, to: sampleNFT.address, data: transferMethodTransactionData, value: 0, gas: 500000
@@ -206,14 +214,17 @@ contract('Composable', function(accounts) {
     assert(nftps.length === 1 && nftps[0].equals(2), 'composable does not own right nftps');
   });
   
-  // /**************************************
-  // * Checking Composable in Composable
-  // **************************************/
+  /**************************************
+  * Checking Composable in Composable
+  **************************************/
   
   it('should safeTransferFrom Composable "2" to Composable "1"', async () => {
     // safeTransferFrom is index 16 on Composable abi
+    
+    const safeTransferFrom = Composable.abi.filter(f => f.name === 'safeTransferFrom' && f.inputs.length === 4)[0];
+    
     const transferMethodTransactionData = web3Abi.encodeFunctionCall(
-      Composable.abi[16], [alice, composable.address, 2, bytes1 ]
+      safeTransferFrom, [alice, composable.address, 2, bytes1 ]
     );
     const tx = await web3.eth.sendTransaction({
       from: alice, to: composable.address, data: transferMethodTransactionData, value: 0, gas: 500000
@@ -221,9 +232,9 @@ contract('Composable', function(accounts) {
     assert(tx != undefined, 'no tx using safeTransferFrom');
   });
   
-  // /**************************************
-  // * Checking Arrays
-  // **************************************/
+  /**************************************
+  * Checking Arrays
+  **************************************/
   
   it('should have 2 nftp contract addresses: Composable and SampleNFT', async () => {
     const contracts = await composable.nftpContractsOwnedBy.call(1);
@@ -242,6 +253,16 @@ contract('Composable', function(accounts) {
   it('should have 1 nftp contract Composable', async () => {
     const contracts = await composable.nftpContractsOwnedBy.call(1);
     assert(contracts.length === 1 && contracts[0] === composable.address, 'composable does not have the right amount of contracts');
+  });
+  
+  /**************************************
+  * Testing ERC998PossessERC20
+  **************************************/
+  
+  it('should mint ERC20', async () => {
+    const success = sampleERC20.mint.call(alice, 1000);
+    assert(success, 'did not mint ERC20');
+    sampleERC20.mint(alice, 1000);
   });
   
 });

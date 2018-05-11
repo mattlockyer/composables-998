@@ -6,8 +6,9 @@ pragma solidity ^0.4.21;
 
 import "zeppelin-solidity/contracts/token/ERC721/ERC721Token.sol";
 import "./ERC998PossessERC721.sol";
+import "./ERC998PossessERC20.sol";
 
-contract Composable is ERC721Token, ERC998PossessERC721 {
+contract Composable is ERC721Token, ERC998PossessERC721, ERC998PossessERC20 {
 
   /**************************************
   * ERC-721 Setup Methods for Testing

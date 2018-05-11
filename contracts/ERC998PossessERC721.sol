@@ -23,7 +23,7 @@ contract ERC998PossessERC721 is ERC721Receiver {
   }
 
   /**************************************
-  * ERC998PossessNFT Begin
+  * ERC998PossessERC721 Begin
   **************************************/
   
   /**************************************
