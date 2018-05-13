@@ -46,6 +46,7 @@ contract('Composable', function(accounts) {
   
   const bytes1 = web3Utils.fromAscii("1", 32);
   const bytes2 = web3Utils.fromAscii("2", 32);
+  const bytes3 = web3Utils.fromAscii("3", 32);
   
   it('should be deployed, Composable', async () => {
     composable = await Composable.deployed();
@@ -259,11 +260,60 @@ contract('Composable', function(accounts) {
   * Testing ERC998PossessERC20
   **************************************/
   
-  it('should mint ERC20', async () => {
-    const success = sampleERC20.mint.call(alice, 1000);
-    assert(success, 'did not mint ERC20');
-    sampleERC20.mint(alice, 1000);
+  
+  it('should mint a 721 token, Composable "3" for Alice', async () => {
+    const tokenId = await composable.mint721.call(alice);
+    assert(tokenId.equals(3), 'Composable 721 token was not created or has wrong tokenId');
+    const tx = await composable.mint721(alice);
   });
+  
+  it('should mint ERC20', async () => {
+    const success = await sampleERC20.mint.call(alice, 1000);
+    assert(success, 'did not mint ERC20');
+    const tx = await sampleERC20.mint(alice, 1000);
+  });
+  
+  it('should have an ERC20 balance', async () => {
+    const balance = await sampleERC20.balanceOf.call(alice);
+    assert(balance.equals(1000), 'incorrect balance');
+  });
+  
+  it('should safeTransferFrom half the value from the ERC20 to the composable "3"', async () => {
+    const success = await sampleERC20.safeTransferFromERC20.call(alice, composable.address, 500, bytes3);
+    //console.log(success);
+    assert(success, 'did not transfer');
+    const tx = await sampleERC20.safeTransferFromERC20(alice, composable.address, 500, bytes3);
+  });
+  
+  it('should have half the balance of sampleERC20 in composable "3"', async () => {
+    const contracts = await composable.ftpContractsOwnedBy.call(3);
+    //console.log(contracts, sampleERC20.address);
+    assert(contracts.length === 1, 'ERC20 balance of composable NOT correct');
+  });
+  
+  it('should have half the balance of sampleERC20 in composable "3"', async () => {
+    const balance = await composable.ftpBalanceOf.call(3, sampleERC20.address);
+    assert(balance.equals(500), 'ERC20 balance of composable NOT correct');
+  });
+  
+  it('should transfer half the balance in composable "3" to bob', async () => {
+    const success = await composable.safeTransferFTP.call(bob, 3, sampleERC20.address, 250, bytes1);
+    assert(success, 'did not transfer ERC20 from composable');
+    const tx = await composable.safeTransferFTP(bob, 3, sampleERC20.address, 250, bytes1);
+  });
+  
+  it('composable "3" should have 250 tokens', async () => {
+    const balance = await composable.ftpBalanceOf.call(3, sampleERC20.address);
+    console.log(balance.toNumber());
+    assert(balance.equals(250), 'ERC20 balance of composable NOT correct');
+  });
+  
+  it('bob should have 250 tokens', async () => {
+    const balanceOf = await sampleERC20.balanceOf.call(bob);
+    console.log(balanceOf.toNumber());
+    assert(balanceOf.equals(250), 'ERC20 balance of composable NOT correct');
+  });
+  
   
 });
 

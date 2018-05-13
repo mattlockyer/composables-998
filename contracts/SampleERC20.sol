@@ -5,14 +5,13 @@
 pragma solidity ^0.4.21;
 
 import "zeppelin-solidity/contracts/token/ERC20/MintableToken.sol";
-import "zeppelin-solidity/contracts/AddressUtils.sol";
 import "./ERC20Receiver.sol";
 
 contract SampleERC20 is MintableToken {
   bytes4 constant ERC20_RECEIVED = 0x65d83056;
   
-  function safeTransferFromERC20(address _from, address _to, uint256 _value, bytes _data) public returns (bool success) {
-    transferFrom(_from, _to, _value);
+  function safeTransferFromERC20(address _from, address _to, uint256 _value, bytes _data) public returns (bool) {
+    require(transfer(_to, _value));
     require(checkAndCallSafeTransferERC20(_from, _to, _value, _data));
     return true;
   }
