@@ -23,27 +23,27 @@ contract ERC998PossessERC20 is ERC20Receiver {
   }
 
   /**************************************
-   * ERC998PossessERC20 Begin
-   **************************************/
-
+  * ERC998PossessERC20 Begin
+  **************************************/
+  
   // mapping from nft to all ftp contracts
   mapping(uint256 => address[]) ftpContracts;
-
+  
   // mapping for the ftp contract index
   mapping(uint256 => mapping(address => uint256)) ftpContractIndex;
-
+  
   // mapping from contract pseudo-address owner ftp to the tokenIds
   mapping(address => uint256) ftpBalances;
-
+  
   /**************************************
-   * Public View Functions (wallet integration)
-   **************************************/
-
+  * Public View Functions (wallet integration)
+  **************************************/
+  
   // returns the ftp contracts owned by a composable
   function ftpContractsOwnedBy(uint256 _tokenId) public view returns(address[]) {
     return ftpContracts[_tokenId];
   }
-
+  
   // returns the ftps owned by the composable for a specific ftp contract
   function ftpBalanceOf(uint256 _tokenId, address _ftpContract) public view returns(uint256) {
     return ftpBalances[_ftpAddress(_tokenId, _ftpContract)];
