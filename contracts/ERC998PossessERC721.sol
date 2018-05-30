@@ -5,22 +5,9 @@
 pragma solidity ^0.4.21;
 
 import "zeppelin-solidity/contracts/token/ERC721/ERC721Receiver.sol";
+import "./ERC998Helpers.sol";
 
 contract ERC998PossessERC721 is ERC721Receiver {
-
-  /**************************************
-  * Helper Methods (move to library or add library)
-  **************************************/
-  
-  function bytesToUint(bytes b) internal pure returns (uint256 result) {
-    result = 0;
-    for (uint256 i = 0; i < b.length; i++) {
-      uint256 c = uint256(b[i]);
-      if (c >= 48 && c <= 57) {
-        result = result * 10 + (c - 48);
-      }
-    }
-  }
 
   /**************************************
   * ERC998PossessERC721 Begin
@@ -129,7 +116,7 @@ contract ERC998PossessERC721 is ERC721Receiver {
   function nftpReceived(address _from, uint256 _nftpTokenId, bytes _data) internal {
     // convert _data bytes to uint256, owner nft tokenId passed as string in bytes
     // bytesToUint(_data) i.e. tokenId = 5 would be "5" coming from web3 or another contract
-    uint256 _tokenId = bytesToUint(_data);
+    uint256 _tokenId = ERC998Helpers.bytesToUint(_data);
     // log the nftp contract and index
     nftpContractIndex[_tokenId][_from] = nftpContracts[_tokenId].length;
     nftpContracts[_tokenId].push(_from);
