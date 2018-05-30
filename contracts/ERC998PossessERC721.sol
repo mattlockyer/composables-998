@@ -14,165 +14,165 @@ contract ERC998PossessERC721 is ERC721Receiver {
   **************************************/
   
   /**************************************
-  * NFTP Mappings
+  * Child Mappings
   **************************************/
   
-  // mapping from nft to all ftp and nftp contracts
-  mapping(uint256 => address[]) nftpContracts;
+  // mapping from nft to all child contracts
+  mapping(uint256 => address[]) childContracts;
   
-  // mapping for the nftp contract index
-  mapping(uint256 => mapping(address => uint256)) nftpContractIndex;
+  // mapping for the child contract address index in the childContracts array
+  mapping(uint256 => mapping(address => uint256)) childContractIndex;
   
   // mapping from contract pseudo-address owner nftp to the tokenIds
-  mapping(address => uint256[]) nftpTokens;
+  mapping(address => uint256[]) childTokens;
   
-  // mapping from pseudo owner address to nftpTokenId to array index
-  mapping(address => mapping(uint256 => uint256)) nftpTokenIndex;
+  // mapping from pseudo owner address to childTokenId to array index
+  mapping(address => mapping(uint256 => uint256)) childTokenIndex;
   
-  // mapping NFTP pseudo-address to bool
-  mapping(address => bool) nftpOwned;
+  // mapping child pseudo-address to bool
+  mapping(address => bool) childOwned;
   
   /**************************************
   * Events
   **************************************/
   
-  event Received(address _from, uint256 _nftpTokenId, bytes _data);
+  event Received(address _from, uint256 _childTokenId, bytes _data);
   
-  event Added(uint256 _tokenId, address _nftpContract, uint256 _nftpTokenId);
+  event Added(uint256 _tokenId, address _childContract, uint256 _childTokenId);
   
-  event TransferNFTP(address _from, address _to, uint256 _nftpTokenId);
+  event TransferChild(address _from, address _to, uint256 _childTokenId);
   
   /**************************************
   * Utility Methods
   **************************************/
 
-  // generates a pseudo-address from the nft that owns, nftp contract
-  function _nftpOwner(
-    uint256 _tokenId, address _nftpContract
+  // generates a pseudo-address from the nft that owns, child contract
+  function _childOwner(
+    uint256 _tokenId, address _childContract
   ) internal pure returns (address) {
-    return address(keccak256(_tokenId, _nftpContract));
+    return address(keccak256(_tokenId, _childContract));
   }
   
-  // generates a pseudo-address for the nftp from the nft that owns, nftp contract, nftp tokenId
-  function _nftpAddress(
-    uint256 _tokenId, address _nftpContract, uint256 _nftpTokenId
+  // generates a pseudo-address for the child from the nft that owns, child contract, child tokenId
+  function _childAddress(
+    uint256 _tokenId, address _childContract, uint256 _childTokenId
   ) internal pure returns (address) {
-    return address(keccak256(_tokenId, _nftpContract, _nftpTokenId));
+    return address(keccak256(_tokenId, _childContract, _childTokenId));
   }
   
-  // removes ftp/nftp contract from list of possession contracts
-  function _removeContract(uint256 _tokenId, address _nftpContract) internal {
-    uint256 contractIndex = nftpContractIndex[_tokenId][_nftpContract];
-    uint256 lastContractIndex = nftpContracts[_tokenId].length - 1;
-    address lastContract = nftpContracts[_tokenId][lastContractIndex];
-    nftpContracts[_tokenId][contractIndex] = lastContract;
-    nftpContracts[_tokenId][lastContractIndex] = 0;
-    nftpContracts[_tokenId].length--;
-    nftpContractIndex[_tokenId][_nftpContract] = 0;
-    nftpContractIndex[_tokenId][lastContract] = contractIndex;
+  // removes child contract from list of possession contracts
+  function _removeContract(uint256 _tokenId, address _childContract) internal {
+    uint256 contractIndex = childContractIndex[_tokenId][_childContract];
+    uint256 lastContractIndex = childContracts[_tokenId].length - 1;
+    address lastContract = childContracts[_tokenId][lastContractIndex];
+    childContracts[_tokenId][contractIndex] = lastContract;
+    childContracts[_tokenId][lastContractIndex] = 0;
+    childContracts[_tokenId].length--;
+    childContractIndex[_tokenId][_childContract] = 0;
+    childContractIndex[_tokenId][lastContract] = contractIndex;
   }
   
-  // removes nftp from list of possessions
-  function _removeNFTP(address nftpOwner, uint256 _nftpTokenId) internal {
-    uint256 tokenIndex = nftpTokenIndex[nftpOwner][_nftpTokenId];
-    uint256 lastTokenIndex = nftpTokens[nftpOwner].length - 1;
-    uint256 lastToken = nftpTokens[nftpOwner][lastTokenIndex];
-    nftpTokens[nftpOwner][tokenIndex] = lastToken;
-    nftpTokens[nftpOwner][lastTokenIndex] = 0;
-    nftpTokens[nftpOwner].length--;
-    nftpTokenIndex[nftpOwner][_nftpTokenId] = 0;
-    nftpTokenIndex[nftpOwner][lastToken] = tokenIndex;
+  // removes child from list of possessions
+  function _removeChild(address childOwner, uint256 _childTokenId) internal {
+    uint256 tokenIndex = childTokenIndex[childOwner][_childTokenId];
+    uint256 lastTokenIndex = childTokens[childOwner].length - 1;
+    uint256 lastToken = childTokens[childOwner][lastTokenIndex];
+    childTokens[childOwner][tokenIndex] = lastToken;
+    childTokens[childOwner][lastTokenIndex] = 0;
+    childTokens[childOwner].length--;
+    childTokenIndex[childOwner][_childTokenId] = 0;
+    childTokenIndex[childOwner][lastToken] = tokenIndex;
   }
   
   /**************************************
   * Internal Transfer and Receive Methods
   **************************************/
   
-  function transferNFTP(
-    address _to, uint256 _tokenId, address _nftpContract, uint256 _nftpTokenId
+  function transferChild(
+    address _to, uint256 _tokenId, address _childContract, uint256 _childTokenId
   ) internal {
-    // get the pseudo address of the nftp from the composable owner, nftp contract and nftp tokenId
-    address nftp = _nftpAddress(_tokenId, _nftpContract, _nftpTokenId);
-    //require that the nftp is owned
-    require(nftpOwned[nftp] == true);
-    //require that the nftp was transfered safely to it's destination
+    // get the pseudo address of the child from the composable owner, child contract and child tokenId
+    address child = _childAddress(_tokenId, _childContract, _childTokenId);
+    //require that the child is owned
+    require(childOwned[child] == true);
+    //require that the child was transfered safely to it's destination
     require(
-      _nftpContract.call(
+      _childContract.call(
         bytes4(keccak256("safeTransferFrom(address,address,uint256)")),
-        this, _to, _nftpTokenId
+        this, _to, _childTokenId
       )
     );
     // remove the parent token's ownership of the child token
-    nftpOwned[nftp] = false;
-    // remove the nftp contract and index
-    _removeContract(_tokenId, _nftpContract);
-    // _nftpOwner is _tokenId and _nftpContract pseudo address
-    address nftpOwner = _nftpOwner(_tokenId, _nftpContract);
-    _removeNFTP(nftpOwner, _nftpTokenId);
+    childOwned[child] = false;
+    // remove the child contract and index
+    _removeContract(_tokenId, _childContract);
+    // _childOwner is _tokenId and _childContract pseudo address
+    address childOwner = _childOwner(_tokenId, _childContract);
+    _removeChild(childOwner, _childTokenId);
     
-    emit TransferNFTP(this, _to, _nftpTokenId);
+    emit TransferChild(this, _to, _childTokenId);
   }
   
-  function nftpReceived(address _from, uint256 _nftpTokenId, bytes _data) internal {
+  function childReceived(address _from, uint256 _childTokenId, bytes _data) internal {
     // convert _data bytes to uint256, owner nft tokenId passed as string in bytes
     // bytesToUint(_data) i.e. tokenId = 5 would be "5" coming from web3 or another contract
     uint256 _tokenId = ERC998Helpers.bytesToUint(_data);
-    // log the nftp contract and index
-    nftpContractIndex[_tokenId][_from] = nftpContracts[_tokenId].length;
-    nftpContracts[_tokenId].push(_from);
+    // log the child contract and index
+    childContractIndex[_tokenId][_from] = childContracts[_tokenId].length;
+    childContracts[_tokenId].push(_from);
     // log the tokenId and index
-    address nftpOwner = _nftpOwner(_tokenId, _from);
-    nftpTokenIndex[nftpOwner][_nftpTokenId] = nftpTokens[nftpOwner].length;
-    nftpTokens[nftpOwner].push(_nftpTokenId);
+    address childOwner = _childOwner(_tokenId, _from);
+    childTokenIndex[childOwner][_childTokenId] = childTokens[childOwner].length;
+    childTokens[childOwner].push(_childTokenId);
     // set bool of owned to true
-    nftpOwned[_nftpAddress(_tokenId, _from, _nftpTokenId)] = true;
+    childOwned[_childAddress(_tokenId, _from, _childTokenId)] = true;
     // emit event
-    emit Added(_tokenId, _from, _nftpTokenId);
+    emit Added(_tokenId, _from, _childTokenId);
   }
   
   /**************************************
   * Public View Functions (wallet integration)
   **************************************/
   
-  // returns the nftp contracts owned by a composable
-  function nftpContractsOwnedBy(uint256 _tokenId) public view returns (address[]) {
-    return nftpContracts[_tokenId];
+  // returns the child contracts owned by a composable
+  function childContractsOwnedBy(uint256 _tokenId) public view returns (address[]) {
+    return childContracts[_tokenId];
   }
   
-  // returns the nftps owned by the composable for a specific nftp contract
-  function nftpsOwnedBy(uint256 _tokenId, address _nftpContract) public view returns (uint256[]) {
-    return nftpTokens[_nftpOwner(_tokenId, _nftpContract)];
+  // returns the childs owned by the composable for a specific child contract
+  function childsOwnedBy(uint256 _tokenId, address _childContract) public view returns (uint256[]) {
+    return childTokens[_childOwner(_tokenId, _childContract)];
   }
   
-  // check if nftp is owned by this composable
-  function nftpIsOwned(
-    uint256 _tokenId, address _nftpContract, uint256 _nftpTokenId
+  // check if child is owned by this composable
+  function childIsOwned(
+    uint256 _tokenId, address _childContract, uint256 _childTokenId
   ) public view returns (bool) {
-    return nftpOwned[_nftpAddress(_tokenId, _nftpContract, _nftpTokenId)];
+    return childOwned[_childAddress(_tokenId, _childContract, _childTokenId)];
   }
   
   /**************************************
   * Public Transfer and Receive Functions
   **************************************/
   
-  // sending nftp to account
-  // function safeTransferNFTP(
-  //   address _to, uint256 _tokenId, address _nftpContract, uint256 _nftpTokenId
+  // sending child to account
+  // function safeTransferChild(
+  //   address _to, uint256 _tokenId, address _childContract, uint256 _childTokenId
   // ) public {
-  //   transferNFTP(_to, _tokenId, _nftpContract, _nftpTokenId);
+  //   transferChild(_to, _tokenId, _childContract, _childTokenId);
   // }
   
-  // sending nftp directly to another composable
-  function safeTransferNFTP(
-    address _to, uint256 _tokenId, address _nftpContract, uint256 _nftpTokenId, bytes _data
+  // sending child directly to another composable
+  function safeTransferChild(
+    address _to, uint256 _tokenId, address _childContract, uint256 _childTokenId, bytes _data
   ) public {
-    transferNFTP(_to, _tokenId, _nftpContract, _nftpTokenId);
-    nftpReceived(_nftpContract, _nftpTokenId, _data);
+    transferChild(_to, _tokenId, _childContract, _childTokenId);
+    childReceived(_childContract, _childTokenId, _data);
   }
   
   // receiving NFT to composable, _data is bytes (string) tokenId
-  function onERC721Received(address _from, uint256 _nftpTokenId, bytes _data) public returns(bytes4) {
-    nftpReceived(msg.sender, _nftpTokenId, _data);
+  function onERC721Received(address _from, uint256 _childTokenId, bytes _data) public returns(bytes4) {
+    childReceived(msg.sender, _childTokenId, _data);
     return ERC721_RECEIVED;
   }
   

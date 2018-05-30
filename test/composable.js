@@ -22,8 +22,8 @@ const logEvent = (func) => {
     if (result.args._from) console.log(result.args._from);
     if (result.args._to) console.log(result.args._to);
     if (result.args._tokenId) console.log(result.args._tokenId.toNumber());
-    if (result.args._nftpContract) console.log(result.args._nftpContract);
-    if (result.args._nftpTokenId) console.log(result.args._nftpTokenId.toNumber());
+    if (result.args._childContract) console.log(result.args._childContract);
+    if (result.args._childTokenId) console.log(result.args._childTokenId.toNumber());
     if (result.args._data) console.log(result.args._data);
   });
 }
@@ -57,7 +57,7 @@ contract('Composable', function(accounts) {
     
     // logEvent(composable.Received);
     // logEvent(composable.Added);
-    // logEvent(composable.TransferNFTP);
+    // logEvent(composable.TransferChild);
     
     
     assert(composable !== undefined, 'Composable was not deployed');
@@ -102,7 +102,7 @@ contract('Composable', function(accounts) {
   });
   
   it('should own sampleNFT, Composable', async () => {
-    const owned = await composable.nftpIsOwned(1, sampleNFT.address, 1);
+    const owned = await composable.childIsOwned(1, sampleNFT.address, 1);
     assert(owned, 'composable does not own sampleNFT');
   });
   
@@ -110,14 +110,14 @@ contract('Composable', function(accounts) {
   * Checking array, should have added sampleNFT after transfer
   **************************************/
   
-  it('should have 1 nftp contract address sampleNFT', async () => {
-    const contracts = await composable.nftpContractsOwnedBy.call(1);
-    assert(contracts[0] === sampleNFT.address, 'composable does not have the right nftps contract');
+  it('should have 1 child contract address sampleNFT', async () => {
+    const contracts = await composable.childContractsOwnedBy.call(1);
+    assert(contracts[0] === sampleNFT.address, 'composable does not have the right childs contract');
   });
   
-  it('should have 1 nftp of type sampleNFT in Composable of tokenId 1', async () => {
-    const num = await composable.nftpsOwnedBy.call(1, sampleNFT.address);
-    assert(num.length === 1 && num[0].equals(1), 'composable does not own right nftps');
+  it('should have 1 child of type sampleNFT in Composable of tokenId 1', async () => {
+    const num = await composable.childsOwnedBy.call(1, sampleNFT.address);
+    assert(num.length === 1 && num[0].equals(1), 'composable does not own right childs');
   });
   
   /**************************************
@@ -135,10 +135,10 @@ contract('Composable', function(accounts) {
     assert(address == bob, 'composable not owned by bob');
   });
   
-  it('should transfer nftp to alice', async () => {
-    const success = await composable.safeTransferNFTP.call(alice, 1, sampleNFT.address, 1, "1", { from: bob });
+  it('should transfer child to alice', async () => {
+    const success = await composable.safeTransferChild.call(alice, 1, sampleNFT.address, 1, "1", { from: bob });
     assert(success, 'transfer did not work');
-    const tx = await composable.safeTransferNFTP(alice, 1, sampleNFT.address, 1, "1", { from: bob });
+    const tx = await composable.safeTransferChild(alice, 1, sampleNFT.address, 1, "1", { from: bob });
   });
   
   it('should own sampleNFT, alice', async () => {
@@ -151,17 +151,17 @@ contract('Composable', function(accounts) {
   **************************************/
   
   it('should NOT have a sampleNFT contract', async () => {
-    const contracts = await composable.nftpContractsOwnedBy.call(1);
+    const contracts = await composable.childContractsOwnedBy.call(1);
     assert(contracts.length === 0, 'composable still has contract in array');
   });
   
-  it('should NOT have an nftp', async () => {
-    const num = await composable.nftpsOwnedBy.call(1, sampleNFT.address);
-    assert(num.length === 0, 'composable still has nftp in array');
+  it('should NOT have an child', async () => {
+    const num = await composable.childsOwnedBy.call(1, sampleNFT.address);
+    assert(num.length === 0, 'composable still has child in array');
   });
   
   /**************************************
-  * Checking NFTP transfer from Composable to Composable
+  * Checking Child transfer from Composable to Composable
   **************************************/
   
   it('should mint a 721 token, Composable "2" for Alice', async () => {
@@ -192,12 +192,12 @@ contract('Composable', function(accounts) {
   });
   
   it('should own sampleNFT "2", Composable "2"', async () => {
-    const nftps = await composable.nftpsOwnedBy.call(2, sampleNFT.address);
-    assert(nftps.length === 1 && nftps[0].equals(2), 'composable 2 does not own right nftps');
+    const childs = await composable.childsOwnedBy.call(2, sampleNFT.address);
+    assert(childs.length === 1 && childs[0].equals(2), 'composable 2 does not own right childs');
   });
   
-  it('should transfer nftp to from composable 2 to composable 1', async () => {
-    const tx = await composable.safeTransferNFTP(composable.address, 2, sampleNFT.address, 2, bytes1);
+  it('should transfer child to from composable 2 to composable 1', async () => {
+    const tx = await composable.safeTransferChild(composable.address, 2, sampleNFT.address, 2, bytes1);
   });
   
   it('should own sampleNFT 2, composable', async () => {
@@ -205,14 +205,14 @@ contract('Composable', function(accounts) {
     assert(address == composable.address, 'composable does NOT own sampleNFT 2');
   });
   
-  it('should have 1 nftp contract addresses SampleNFT', async () => {
-    const contracts = await composable.nftpContractsOwnedBy.call(1);
+  it('should have 1 child contract addresses SampleNFT', async () => {
+    const contracts = await composable.childContractsOwnedBy.call(1);
     assert(contracts.length === 1, 'composable does not have the right amount of contracts');
   });
   
-  it('should have 1 nftp of type sampleNFT of ID "2"', async () => {
-    const nftps = await composable.nftpsOwnedBy.call(1, sampleNFT.address);
-    assert(nftps.length === 1 && nftps[0].equals(2), 'composable does not own right nftps');
+  it('should have 1 child of type sampleNFT of ID "2"', async () => {
+    const childs = await composable.childsOwnedBy.call(1, sampleNFT.address);
+    assert(childs.length === 1 && childs[0].equals(2), 'composable does not own right childs');
   });
   
   /**************************************
@@ -237,22 +237,22 @@ contract('Composable', function(accounts) {
   * Checking Arrays
   **************************************/
   
-  it('should have 2 nftp contract addresses: Composable and SampleNFT', async () => {
-    const contracts = await composable.nftpContractsOwnedBy.call(1);
+  it('should have 2 child contract addresses: Composable and SampleNFT', async () => {
+    const contracts = await composable.childContractsOwnedBy.call(1);
     assert(contracts.length === 2, 'composable does not have the right amount of contracts');
   });
   
-  it('should have 1 nftp of type Composable of ID "2"', async () => {
-    const num = await composable.nftpsOwnedBy.call(1, composable.address);
-    assert(num.length === 1 && num[0].equals(2), 'composable does not own right nftp for Composable');
+  it('should have 1 child of type Composable of ID "2"', async () => {
+    const num = await composable.childsOwnedBy.call(1, composable.address);
+    assert(num.length === 1 && num[0].equals(2), 'composable does not own right child for Composable');
   });
   
-  it('should transfer nftp 2 to from composable 1 to composable 2', async () => {
-    const tx = await composable.safeTransferNFTP(composable.address, 1, sampleNFT.address, 2, bytes2, { from: bob });
+  it('should transfer child 2 to from composable 1 to composable 2', async () => {
+    const tx = await composable.safeTransferChild(composable.address, 1, sampleNFT.address, 2, bytes2, { from: bob });
   });
   
-  it('should have 1 nftp contract Composable', async () => {
-    const contracts = await composable.nftpContractsOwnedBy.call(1);
+  it('should have 1 child contract Composable', async () => {
+    const contracts = await composable.childContractsOwnedBy.call(1);
     assert(contracts.length === 1 && contracts[0] === composable.address, 'composable does not have the right amount of contracts');
   });
   
@@ -304,13 +304,13 @@ contract('Composable', function(accounts) {
   
   it('composable "3" should have 250 tokens', async () => {
     const balance = await composable.ftpBalanceOf.call(3, sampleERC20.address);
-    console.log(balance.toNumber());
+    //console.log(balance.toNumber());
     assert(balance.equals(250), 'ERC20 balance of composable NOT correct');
   });
   
   it('bob should have 250 tokens', async () => {
     const balanceOf = await sampleERC20.balanceOf.call(bob);
-    console.log(balanceOf.toNumber());
+    //console.log(balanceOf.toNumber());
     assert(balanceOf.equals(250), 'ERC20 balance of composable NOT correct');
   });
   

@@ -29,13 +29,13 @@ contract Composable is ERC721Token, ERC998PossessERC721, ERC998PossessERC20 {
   }
   
   // override the transferNFTP method to include check of NFT ownership
-  function safeTransferNFTP(
-    address _to, uint256 _tokenId, address _nftpContract, uint256 _nftpTokenId, bytes _data
+  function safeTransferChild(
+    address _to, uint256 _tokenId, address _childContract, uint256 _childTokenId, bytes _data
   ) public {
     // require that the composable nft is owned by sender
     require(_owns(msg.sender, _tokenId));
-    transferNFTP(_to, _tokenId, _nftpContract, _nftpTokenId);
-    nftpReceived(_nftpContract, _nftpTokenId, _data);
+    transferChild(_to, _tokenId, _childContract, _childTokenId);
+    childReceived(_childContract, _childTokenId, _data);
   }
   
 }
