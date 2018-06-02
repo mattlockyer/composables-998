@@ -84,9 +84,9 @@ contract ERC998PossessERC721 is ERC998NFT, ERC998NFTEnumerable {
       uint256 lastContractIndex = childContracts[_tokenId].length - 1;
       address lastContract = childContracts[_tokenId][lastContractIndex];
       childContracts[_tokenId][contractIndex] = lastContract;
-      childContracts[_tokenId].length--;
-      delete childContractIndex[_tokenId][_childContract];
       childContractIndex[_tokenId][lastContract] = contractIndex;
+      childContracts[_tokenId].length--;
+      delete childContractIndex[_tokenId][_childContract];      
     }
   }
 
