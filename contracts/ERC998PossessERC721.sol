@@ -10,8 +10,8 @@ interface ERC998NFT {
 
   function childOwnerOf(address _childContract, uint256 _childTokenId) external view returns (uint256 tokenId);
   function onERC721Received(address _from, uint256 _childTokenId, bytes _data) external returns(bytes4);
-  function transferChild(address _to, uint256 _tokenId, address _childContract, uint256 _childTokenId) external;
-  function transferChild(address _to, uint256 _tokenId, address _childContract, uint256 _childTokenId, bytes data) external;
+  function transferChild(address _to, uint256 _tokenId, address _childContract, uint256 _childTokenId) public;
+  function transferChild(address _to, uint256 _tokenId, address _childContract, uint256 _childTokenId, bytes data) public;
 }
 
 interface ERC998NFTEnumerable {
@@ -41,6 +41,8 @@ contract ERC998PossessERC721 is ERC998NFT, ERC998NFTEnumerable {
 
   // child address => childId => tokenId
   mapping(address => mapping(uint256 => uint256)) private childTokenOwner;
+  
+  
 
   function onERC721Received(address _from, uint256 _childTokenId, bytes _data) external returns(bytes4) {
     
@@ -55,6 +57,7 @@ contract ERC998PossessERC721 is ERC998NFT, ERC998NFTEnumerable {
     if(_data.length < 32) {
       _tokenId = _tokenId >> 256 - _data.length * 8;
     }
+    //END TODO
 
     address childContract = msg.sender;
 
@@ -96,25 +99,27 @@ contract ERC998PossessERC721 is ERC998NFT, ERC998NFTEnumerable {
     }
   }
 
-  function transferChild(address _to, uint256 _tokenId, address _childContract, uint256 _childTokenId) external {
-    removeChild(_tokenId, _childContract, _childTokenId);
+  function transferChild(address _to, uint256 _tokenId, address _childContract, uint256 _childTokenId) public {
     //require that the child was transfered safely to it's destination
     require(
       _childContract.call(
         bytes4(keccak256("safeTransferFrom(address,address,uint256)")), this, _to, _childTokenId
       )
     );
+    //let's put this here for logic sake (after all require conditions pass)
+    removeChild(_tokenId, _childContract, _childTokenId);
     emit TransferChild(_to, new bytes(0), _childTokenId);
   }
 
-  function transferChild(address _to, uint256 _tokenId, address _childContract, uint256 _childTokenId, bytes _data) external {
-    removeChild(_tokenId, _childContract, _childTokenId);
+  function transferChild(address _to, uint256 _tokenId, address _childContract, uint256 _childTokenId, bytes _data) public {
     //require that the child was transfered safely to it's destination
     require(
       _childContract.call(
         bytes4(keccak256("safeTransferFrom(address,address,uint256,bytes)")), this, _to, _childTokenId, _data
       )
     );
+    //let's put this here for logic sake (after all require conditions pass)
+    removeChild(_tokenId, _childContract, _childTokenId);
     emit TransferChild(_to, _data, _childTokenId);
   }
 

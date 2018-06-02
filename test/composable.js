@@ -206,18 +206,37 @@ contract('Composable', function(accounts) {
     assert(owned, 'composable does not own sampleNFT 2');
   });
   
-  it('should transfer child to from composable 2 to composable 1', async () => {
+  it('should transferChild to from composable 2 to composable 1', async () => {
     const transferChild = Composable.abi.filter(f => f.name === 'transferChild' && f.inputs.length === 5)[0];
     const data = web3Abi.encodeFunctionCall(
       transferChild, [composable.address, 2, sampleNFT.address, 2, bytes1]
     );
-    
-    console.log(transferChild);
-    
     const tx = await web3.eth.sendTransaction({
       from: alice, to: composable.address, data, value: 0, gas: 500000
     });
     assert(tx, 'tx undefined using transferChild');
+  });
+  
+  it('should own sampleNFT, Composable', async () => {
+    const owned = await composable.childExists(sampleNFT.address, 1);
+    assert(owned, 'composable does not own sampleNFT');
+  });
+  
+  /**************************************
+  * Checking array, should have added sampleNFT after transfer
+  **************************************/
+  
+  it('should have 1 child contract address sampleNFT', async () => {
+    const contracts = await composable.totalChildContracts.call(1);
+    const contract = await composable.childContractByIndex.call(1, 0);
+    //we have to guess the child contract instance to find the address?
+    //do we need to know the child contract address?
+    //why can't we return the child contracts array?
+    const example = await composable.childContractsByToken.call(1);
+    
+    assert(example[0] === SampleNFT.address, 'testing example failed, wrong contract address');
+    
+    assert(contracts.toNumber() === 1 && contract === SampleNFT.address, 'composable does not have the right childs contract');
   });
   
   it('should own sampleNFT 2, composable', async () => {
@@ -240,7 +259,6 @@ contract('Composable', function(accounts) {
   **************************************/
   
   it('should safeTransferFrom Composable "2" to Composable "1"', async () => {
-    // safeTransferFrom is index 16 on Composable abi
     
     const safeTransferFrom = Composable.abi.filter(f => f.name === 'safeTransferFrom' && f.inputs.length === 4)[0];
     
