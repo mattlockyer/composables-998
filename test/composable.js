@@ -160,13 +160,13 @@ contract('Composable', function(accounts) {
   **************************************/
   
   it('should NOT have a sampleNFT contract', async () => {
-    const contracts = await composable.childContractsOwnedBy.call(1);
-    assert(contracts.length === 0, 'composable still has contract in array');
+    const contracts = await composable.totalChildContracts.call(1);
+    assert(contracts.toNumber() === 0, 'composable has wrong number of child contracts');
   });
   
   it('should NOT have an child', async () => {
-    const num = await composable.childsOwnedBy.call(1, sampleNFT.address);
-    assert(num.length === 0, 'composable still has child in array');
+    const owned = await composable.childExists(sampleNFT.address, 1);
+    assert(!owned, 'composable owns a SampleNFT and SHOULD NOT');
   });
   
   /**************************************
