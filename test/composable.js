@@ -147,7 +147,7 @@ contract('Composable', function(accounts) {
   });
   
   it('should transfer child to alice', async () => {
-    const tx = await composable.transferChild(alice, 1, sampleNFT.address, 1, bytes1, { from: bob });
+    const tx = await composable.transferChild(alice, 1, sampleNFT.address, 1, { from: bob });
   });
   
   it('should own sampleNFT, alice', async () => {
