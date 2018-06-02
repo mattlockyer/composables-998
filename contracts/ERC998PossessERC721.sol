@@ -43,6 +43,10 @@ contract ERC998PossessERC721 is ERC998NFT, ERC998NFTEnumerable {
   mapping(address => mapping(uint256 => uint256)) private childTokenOwner;
 
   function onERC721Received(address _from, uint256 _childTokenId, bytes _data) external returns(bytes4) {
+    
+    /**************************************
+    * TODO move to library
+    **************************************/
     // convert up to 32 bytes of_data to uint256, owner nft tokenId passed as uint in bytes
     uint256 _tokenId;
     assembly {
@@ -125,6 +129,10 @@ contract ERC998PossessERC721 is ERC998NFT, ERC998NFTEnumerable {
   function childExists(address _childContract, uint256 _childTokenId) external view returns (bool) {
     uint256 tokenId = childTokenOwner[_childContract][_childTokenId];
     return childTokenIndex[tokenId][_childContract][_childTokenId] != 0;
+  }
+  
+  function childContractsByToken(uint256 _tokenId) external view returns(address[]) {
+    return childContracts[_tokenId];
   }
 
   function totalChildContracts(uint256 _tokenId) external view returns(uint256) {
