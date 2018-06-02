@@ -129,14 +129,14 @@ contract ERC998PossessERC721 is ERC721Receiver {
   
   // returns the childs owned by the composable for a specific child contract
   function childsOwnedBy(uint256 _tokenId, address _childContract) public view returns (uint256[]) {
-    return childTokens[_childOwner(_tokenId, _childContract)];
+    return childTokens[_tokenId][_childContract];
   }
   
   // check if child is owned by this composable
   function childIsOwned(
     uint256 _tokenId, address _childContract, uint256 _childTokenId
   ) public view returns (bool) {
-    return childOwned[_childAddress(_tokenId, _childContract, _childTokenId)];
+    return childTokenIndex[_tokenId][_childContract][_childTokenId] != 0;    
   }
   
 }
