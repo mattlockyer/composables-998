@@ -4,77 +4,70 @@
 
 pragma solidity ^0.4.24;
 
-import "zeppelin-solidity/contracts/token/ERC721/ERC721Receiver.sol";
 
-contract ERC998PossessERC721 is ERC721Receiver {
+interface ERC998NFT {
+  event ReceivedChild(uint256 indexed _tokenId, address indexed _childContract, uint256 _childTokenId, address indexed _from);
+  event TransferChild(address indexed _to, bytes _data, uint256 indexed _childTokenId);    
 
-  /**************************************
-  * ERC998PossessERC721 Begin
-  **************************************/
-  
-  /**************************************
-  * Child Mappings
-  **************************************/
-  
+  function childOwnerOf(address _childContract, uint256 _childTokenId) external view returns (uint256 tokenId);
+  function onERC721Received(address _from, uint256 _childTokenId, bytes _data) external returns(bytes4);
+  function transferChild(address _to, uint256 _tokenId, address _childContract, uint256 _childTokenId) external;
+  function transferChild(address _to, uint256 _tokenId, address _childContract, uint256 _childTokenId, bytes data) external;    
+}
+
+interface ERC998NFTEnumerable {
+  function totalChildContracts(uint256 _tokenId) external view returns(uint256);
+  function childContractByIndex(uint256 _tokenId, uint256 _index) external view returns (address childContract);
+  function totalChildTokens(uint256 _tokenId, address _childContract) external view returns(uint256);
+  function childTokenByIndex(uint256 _tokenId, address _childContract, uint256 _index) external view returns (uint256 childTokenId);
+}
+
+
+contract ERC998PossessERC721 is ERC998NFT, ERC998NFTEnumerable {
+
   // tokenId => child contract
   mapping(uint256 => address[]) private childContracts;
-    
+
   // tokenId => (child address => contract index+1)
   mapping(uint256 => mapping(address => uint256)) private childContractIndex;
-  
+
   // tokenId => (child address => array of child tokens)
   mapping(uint256 => mapping(address => uint256[])) private childTokens;
-  
+
   // tokenId => (child address => (child token => child index+1)
   mapping(uint256 => mapping(address => mapping(uint256 => uint256))) private childTokenIndex;
-  
-  /**************************************
-  * Events
-  **************************************/
-  
-  event Received(address indexed _from, uint256 _childTokenId, bytes _data);
-  
-  event Added(uint256 indexed _tokenId, address _childContract, uint256 _childTokenId);
-  
-  event TransferChild(address _from, address _to, uint256 _childTokenId);
-  
-  
-  /**************************************
-  * Transfer and Receive Methods
-  **************************************/
-  
-  function childReceived(address _from, uint256 _childTokenId, bytes _data) private {
-    // convert _data bytes to uint256, owner nft tokenId passed as uint in bytes
-    // bytesToUint(_data) i.e. tokenId = 5 would be "5" coming from web3 or another contract
+
+  // child address => childId => tokenId
+  mapping(address => mapping(uint256 => uint256)) private childTokenOwner;
+
+  function onERC721Received(address _from, uint256 _childTokenId, bytes _data) external returns(bytes4) {
+    // convert up to 32 bytes of_data to uint256, owner nft tokenId passed as uint in bytes
     uint256 _tokenId;
     assembly { 
-      _tokenId := mload(add(_data, 32)) 
+      _tokenId := calldataload(132)
     }
     if(_data.length < 32) {
       _tokenId = _tokenId >> 256 - _data.length * 8;
     }
 
-    uint256 childTokensLength = childTokens[_tokenId][_from].length;
+    address childContract = msg.sender;
+
+    uint256 childTokensLength = childTokens[_tokenId][childContract].length;
     if(childTokensLength == 0) {
-      childContracts[_tokenId].push(_from);
-      childContractIndex[_tokenId][_from] = childContracts[_tokenId].length;
+      childContractIndex[_tokenId][childContract] = childContracts[_tokenId].length;
+      childContracts[_tokenId].push(childContract);
     }
-    childTokens[_tokenId][_from].push(_childTokenId);
-    childTokenIndex[_tokenId][_from][_childTokenId] = childTokensLength+1;
+    childTokens[_tokenId][childContract].push(_childTokenId);
+    childTokenIndex[_tokenId][childContract][_childTokenId] = childTokensLength;
+    childTokenOwner[childContract][_childTokenId] = _tokenId;
 
-    emit Added(_tokenId, _from, _childTokenId);
-  }
-    
-
-  // receiving NFT to composable, _data is bytes (string) tokenId
-  function onERC721Received(address _from, uint256 _childTokenId, bytes _data) external returns(bytes4) {
-    childReceived(msg.sender, _childTokenId, _data);
+    emit ReceivedChild(_tokenId, childContract, _childTokenId, _from);
     return ERC721_RECEIVED;
   }
 
-  function transferChild_(address _to, uint256 _tokenId, address _childContract, uint256 _childTokenId) internal {
+  function removeChild(uint256 _tokenId, address _childContract, uint256 _childTokenId) internal {
     uint256 tokenIndex = childTokenIndex[_tokenId][_childContract][_childTokenId];
-    require(tokenIndex != 0, "Child token not owned by tokenId.");
+    require(tokenIndex != 0, "Child token not owned by token.");
 
     // remove child token
     uint256 lastTokenIndex = childTokens[_tokenId][_childContract].length-1;
@@ -83,60 +76,71 @@ contract ERC998PossessERC721 is ERC721Receiver {
     childTokens[_tokenId][_childContract].length--;
     delete childTokenIndex[_tokenId][_childContract][_childTokenId];
     childTokenIndex[_tokenId][_childContract][lastToken] = tokenIndex;
+    delete childTokenOwner[_childContract][_childTokenId];
 
     // remove contract
     if(lastTokenIndex == 0) {
-        uint256 contractIndex = childContractIndex[_tokenId][_childContract];
-        uint256 lastContractIndex = childContracts[_tokenId].length - 1;
-        address lastContract = childContracts[_tokenId][lastContractIndex];
-        childContracts[_tokenId][contractIndex-1] = lastContract;
-        childContracts[_tokenId].length--;
-        delete childContractIndex[_tokenId][_childContract];
-        childContractIndex[_tokenId][lastContract] = contractIndex;
+      uint256 contractIndex = childContractIndex[_tokenId][_childContract];
+      uint256 lastContractIndex = childContracts[_tokenId].length - 1;
+      address lastContract = childContracts[_tokenId][lastContractIndex];
+      childContracts[_tokenId][contractIndex] = lastContract;
+      childContracts[_tokenId].length--;
+      delete childContractIndex[_tokenId][_childContract];
+      childContractIndex[_tokenId][lastContract] = contractIndex;
     }
-
-    emit TransferChild(this, _to, _childTokenId);
   }
 
   function transferChild(address _to, uint256 _tokenId, address _childContract, uint256 _childTokenId) external {
-    transferChild_(_to, _tokenId, _childContract, _childTokenId);
+    removeChild(_tokenId, _childContract, _childTokenId);
     //require that the child was transfered safely to it's destination
     require(
       _childContract.call(
         bytes4(keccak256("safeTransferFrom(address,address,uint256)")), this, _to, _childTokenId
       )
     );
+    emit TransferChild(_to, new bytes(0), _childTokenId);
   }
 
-  function transferChild(address _to, uint256 _tokenId, address _childContract, uint256 _childTokenId, bytes data) external {
-    transferChild_(_to, _tokenId, _childContract, _childTokenId);
+  function transferChild(address _to, uint256 _tokenId, address _childContract, uint256 _childTokenId, bytes _data) external {
+    removeChild(_tokenId, _childContract, _childTokenId);
     //require that the child was transfered safely to it's destination
     require(
       _childContract.call(
-        bytes4(keccak256("safeTransferFrom(address,address,uint256,bytes)")), this, _to, _childTokenId, data
+        bytes4(keccak256("safeTransferFrom(address,address,uint256,bytes)")), this, _to, _childTokenId, _data
       )
     );
+    emit TransferChild(_to, _data, _childTokenId);
   }
-  
-  /**************************************
-  * Public View Functions (wallet integration)
-  **************************************/
-  
-  // returns the child contracts owned by a composable
-  function childContractsOwnedBy(uint256 _tokenId) public view returns (address[]) {
-    return childContracts[_tokenId];
+
+  function childOwnerOf(address _childContract, uint256 _childTokenId) external view returns (uint256 tokenId) {
+    tokenId = childTokenOwner[_childContract][_childTokenId];
+    if(tokenId == 0) {
+        require(childTokenIndex[tokenId][_childContract][_childTokenId] != 0, "Child token is not owned by any tokens.");
+    }
+    return tokenId;
   }
-  
-  // returns the childs owned by the composable for a specific child contract
-  function childsOwnedBy(uint256 _tokenId, address _childContract) public view returns (uint256[]) {
-    return childTokens[_tokenId][_childContract];
+
+  function childExists(address _childContract, uint256 _childTokenId) external view returns (bool) {
+    uint256 tokenId = childTokenOwner[_childContract][_childTokenId];
+    return childTokenIndex[tokenId][_childContract][_childTokenId] != 0;
   }
-  
-  // check if child is owned by this composable
-  function childIsOwned(
-    uint256 _tokenId, address _childContract, uint256 _childTokenId
-  ) public view returns (bool) {
-    return childTokenIndex[_tokenId][_childContract][_childTokenId] != 0;    
+
+  function totalChildContracts(uint256 _tokenId) external view returns(uint256) {
+    return childContracts[_tokenId].length;
   }
-  
+
+  function childContractByIndex(uint256 _tokenId, uint256 _index) external view returns (address childContract) {
+    require(_index < childContracts[_tokenId].length, "Contract address does not exist for this token and index.");
+    return childContracts[_tokenId][_index];
+  }
+
+  function totalChildTokens(uint256 _tokenId, address _childContract) external view returns(uint256) {
+    return childTokens[_tokenId][_childContract].length;
+  }
+
+  function childTokenByIndex(uint256 _tokenId, address _childContract, uint256 _index) external view returns (uint256 childTokenId) {
+    require(_index < childTokens[_tokenId][_childContract].length, "Token does not own a child token at contract address and index.");
+    return childTokens[_tokenId][_childContract][_index];
+  }
+
 }
