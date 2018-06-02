@@ -201,8 +201,8 @@ contract('Composable', function(accounts) {
   });
   
   it('should own sampleNFT "2", Composable "2"', async () => {
-    const childs = await composable.childsOwnedBy.call(2, sampleNFT.address);
-    assert(childs.length === 1 && childs[0].equals(2), 'composable 2 does not own right childs');
+    const owned = await composable.childExists(sampleNFT.address, 2);
+    assert(owned, 'composable does not own sampleNFT 2');
   });
   
   it('should transfer child to from composable 2 to composable 1', async () => {
