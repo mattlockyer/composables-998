@@ -4,15 +4,14 @@
 
 pragma solidity ^0.4.24;
 
-
 interface ERC998NFT {
   event ReceivedChild(uint256 indexed _tokenId, address indexed _childContract, uint256 _childTokenId, address indexed _from);
-  event TransferChild(address indexed _to, bytes _data, uint256 indexed _childTokenId);    
+  event TransferChild(address indexed _to, bytes _data, uint256 indexed _childTokenId);
 
   function childOwnerOf(address _childContract, uint256 _childTokenId) external view returns (uint256 tokenId);
   function onERC721Received(address _from, uint256 _childTokenId, bytes _data) external returns(bytes4);
-  function transferChild(address _to, uint256 _tokenId, address _childContract, uint256 _childTokenId) external;
-  function transferChild(address _to, uint256 _tokenId, address _childContract, uint256 _childTokenId, bytes data) external;    
+  function transferChild(address _to, uint256 _tokenId, address _childContract, uint256 _childTokenId) public;
+  function transferChild(address _to, uint256 _tokenId, address _childContract, uint256 _childTokenId, bytes data) public;
 }
 
 interface ERC998NFTEnumerable {
@@ -24,6 +23,9 @@ interface ERC998NFTEnumerable {
 
 
 contract ERC998PossessERC721 is ERC998NFT, ERC998NFTEnumerable {
+  
+  //from zepellin ERC721Receiver.sol
+  bytes4 constant ERC721_RECEIVED = 0xf0b9e5ba;
 
   // tokenId => child contract
   mapping(uint256 => address[]) private childContracts;
@@ -39,17 +41,24 @@ contract ERC998PossessERC721 is ERC998NFT, ERC998NFTEnumerable {
 
   // child address => childId => tokenId
   mapping(address => mapping(uint256 => uint256)) private childTokenOwner;
+  
+  
 
   function onERC721Received(address _from, uint256 _childTokenId, bytes _data) external returns(bytes4) {
-    require(_data.length > 0, "_data must contain the uint256 tokenId to transfer the child token to.");
+    /**************************************
+    * TODO move to library
+    **************************************/
+    require(_data.length > 0, "_data must contain the uint256 tokenId to transfer the child token to.");      
+
     // convert up to 32 bytes of_data to uint256, owner nft tokenId passed as uint in bytes
     uint256 _tokenId;
-    assembly { 
+    assembly {
       _tokenId := calldataload(132)
     }
     if(_data.length < 32) {
       _tokenId = _tokenId >> 256 - _data.length * 8;
     }
+    //END TODO
 
     address childContract = msg.sender;
 
@@ -59,7 +68,7 @@ contract ERC998PossessERC721 is ERC998NFT, ERC998NFTEnumerable {
       childContracts[_tokenId].push(childContract);
     }
     childTokens[_tokenId][childContract].push(_childTokenId);
-    childTokenIndex[_tokenId][childContract][_childTokenId] = childTokensLength;
+    childTokenIndex[_tokenId][childContract][_childTokenId] = childTokensLength + 1;
     childTokenOwner[childContract][_childTokenId] = _tokenId;
 
     emit ReceivedChild(_tokenId, childContract, _childTokenId, _from);
@@ -76,7 +85,7 @@ contract ERC998PossessERC721 is ERC998NFT, ERC998NFTEnumerable {
     childTokens[_tokenId][_childContract][tokenIndex-1] = lastToken;
     childTokenIndex[_tokenId][_childContract][lastToken] = tokenIndex;
     childTokens[_tokenId][_childContract].length--;
-    delete childTokenIndex[_tokenId][_childContract][_childTokenId];    
+    delete childTokenIndex[_tokenId][_childContract][_childTokenId];
     delete childTokenOwner[_childContract][_childTokenId];
 
     // remove contract
@@ -87,29 +96,31 @@ contract ERC998PossessERC721 is ERC998NFT, ERC998NFTEnumerable {
       childContracts[_tokenId][contractIndex] = lastContract;
       childContractIndex[_tokenId][lastContract] = contractIndex;
       childContracts[_tokenId].length--;
-      delete childContractIndex[_tokenId][_childContract];      
+      delete childContractIndex[_tokenId][_childContract];
     }
   }
 
-  function transferChild(address _to, uint256 _tokenId, address _childContract, uint256 _childTokenId) external {
-    removeChild(_tokenId, _childContract, _childTokenId);
+  function transferChild(address _to, uint256 _tokenId, address _childContract, uint256 _childTokenId) public {
     //require that the child was transfered safely to it's destination
     require(
       _childContract.call(
         bytes4(keccak256("safeTransferFrom(address,address,uint256)")), this, _to, _childTokenId
       )
     );
+    //let's put this here for logic sake (after all require conditions pass)
+    removeChild(_tokenId, _childContract, _childTokenId);
     emit TransferChild(_to, new bytes(0), _childTokenId);
   }
 
-  function transferChild(address _to, uint256 _tokenId, address _childContract, uint256 _childTokenId, bytes _data) external {
-    removeChild(_tokenId, _childContract, _childTokenId);
+  function transferChild(address _to, uint256 _tokenId, address _childContract, uint256 _childTokenId, bytes _data) public {
     //require that the child was transfered safely to it's destination
     require(
       _childContract.call(
         bytes4(keccak256("safeTransferFrom(address,address,uint256,bytes)")), this, _to, _childTokenId, _data
       )
     );
+    //let's put this here for logic sake (after all require conditions pass)
+    removeChild(_tokenId, _childContract, _childTokenId);
     emit TransferChild(_to, _data, _childTokenId);
   }
 
@@ -120,10 +131,14 @@ contract ERC998PossessERC721 is ERC998NFT, ERC998NFTEnumerable {
     }
     return tokenId;
   }
-
+  
   function childExists(address _childContract, uint256 _childTokenId) external view returns (bool) {
     uint256 tokenId = childTokenOwner[_childContract][_childTokenId];
     return childTokenIndex[tokenId][_childContract][_childTokenId] != 0;
+  }
+  
+  function childContractsByToken(uint256 _tokenId) external view returns(address[]) {
+    return childContracts[_tokenId];
   }
 
   function totalChildContracts(uint256 _tokenId) external view returns(uint256) {
