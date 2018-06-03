@@ -45,10 +45,10 @@ contract ERC998PossessERC721 is ERC998NFT, ERC998NFTEnumerable {
   
 
   function onERC721Received(address _from, uint256 _childTokenId, bytes _data) external returns(bytes4) {
-    
+    require(_data.length > 0, "_data must contain the uint256 tokenId to transfer the child token to.");      
     /**************************************
     * TODO move to library
-    **************************************/
+    **************************************/  
     // convert up to 32 bytes of_data to uint256, owner nft tokenId passed as uint in bytes
     uint256 _tokenId;
     assembly {
