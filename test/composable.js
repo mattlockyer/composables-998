@@ -131,7 +131,7 @@ contract('Composable', function(accounts) {
   });
   
   /**************************************
-  * Transferring and Composable "1" to Bob
+  * Transferring Composable "1" to Bob
   **************************************/
   
   it('should transfer composable to bob', async () => {
@@ -200,24 +200,22 @@ contract('Composable', function(accounts) {
     assert(tx != undefined, 'no tx using safeTransferFrom');
   });
   
+  it('should have sampleNFT contract', async () => {
+    const contracts = await composable.childContractsByToken.call(2);
+    assert(contracts[0] === sampleNFT.address, 'composable does not have sampleNFT contract');
+  });
+  
   it('should own sampleNFT "2", Composable "2"', async () => {
     const owned = await composable.childExists(sampleNFT.address, 2);
     assert(owned, 'composable does not own sampleNFT 2');
   });
   
   /**************************************
-  * Alice has a new composable with a new sampleNFT
+  * Checking transferChildToComposable from Composable
   **************************************/
-  
-  it('should transferChild to from composable 2 to composable 1', async () => {
-    const transferChild = Composable.abi.filter(f => f.name === 'transferChild' && f.inputs.length === 5)[0];
-    const data = web3Abi.encodeFunctionCall(
-      transferChild, [composable.address, 2, sampleNFT.address, 2, bytes1]
-    );
-    const tx = await web3.eth.sendTransaction({
-      from: alice, to: composable.address, data, value: 0, gas: 500000
-    });
-    assert(tx, 'tx undefined using transferChild');
+  it('should transferChildToComposable to from composable 2 to composable 1', async () => {
+    const tx = await composable.transferChildToComposable(composable.address, 2, sampleNFT.address, 2, bytes1);
+    assert(tx, 'tx undefined using transferChildToComposable');
   });
   
   it('should own sampleNFT, Composable', async () => {
@@ -262,11 +260,10 @@ contract('Composable', function(accounts) {
   **************************************/
   
   it('should transferChild Composable "2" to Composable "1"', async () => {
-    
     const transferChild = Composable.abi.filter(f => f.name === 'transferChild' && f.inputs.length === 4)[0];
     
     const transferMethodTransactionData = web3Abi.encodeFunctionCall(
-      transferChild, [alice, composable.address, 2, bytes1 ]
+      transferChild, [alice, composable.address, 2, bytes1]
     );
     const tx = await web3.eth.sendTransaction({
       from: alice, to: composable.address, data: transferMethodTransactionData, value: 0, gas: 500000

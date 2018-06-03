@@ -42,10 +42,10 @@ contract Composable is ERC721Token, ERC998PossessERC721, ERC998PossessERC20 {
     super.transferChild(_to, _tokenId, _childContract, _childTokenId);
   }
 
-  function transferChild(address _to, uint256 _tokenId, address _childContract, uint256 _childTokenId, bytes _data) public {
+  function transferChildToComposable(address _to, uint256 _tokenId, address _childContract, uint256 _childTokenId, bytes _data) public {
     //how can we push down to extension?
     require(_owns(msg.sender, _tokenId));
-    super.transferChild(_to, _tokenId, _childContract, _childTokenId, _data);
+    super.transferChildToComposable(_to, _tokenId, _childContract, _childTokenId, _data);
   }
   
   
