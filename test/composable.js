@@ -99,7 +99,6 @@ contract('Composable', function(accounts) {
     // parent tokenId is a string because it's passed as bytes data
     // safeTransferFrom is index 13 on zeppelin ERC721
     const safeTransferFrom = SampleNFT.abi.filter(f => f.name === 'safeTransferFrom' && f.inputs.length === 4)[0];
-    
     const transferMethodTransactionData = web3Abi.encodeFunctionCall(
       safeTransferFrom, [alice, composable.address, 1, bytes1]
     );
@@ -206,6 +205,10 @@ contract('Composable', function(accounts) {
     assert(owned, 'composable does not own sampleNFT 2');
   });
   
+  /**************************************
+  * Alice has a new composable with a new sampleNFT
+  **************************************/
+  
   it('should transferChild to from composable 2 to composable 1', async () => {
     const transferChild = Composable.abi.filter(f => f.name === 'transferChild' && f.inputs.length === 5)[0];
     const data = web3Abi.encodeFunctionCall(
@@ -258,17 +261,17 @@ contract('Composable', function(accounts) {
   * Checking Composable in Composable
   **************************************/
   
-  it('should safeTransferFrom Composable "2" to Composable "1"', async () => {
+  it('should transferChild Composable "2" to Composable "1"', async () => {
     
-    const safeTransferFrom = Composable.abi.filter(f => f.name === 'safeTransferFrom' && f.inputs.length === 4)[0];
+    const transferChild = Composable.abi.filter(f => f.name === 'transferChild' && f.inputs.length === 4)[0];
     
     const transferMethodTransactionData = web3Abi.encodeFunctionCall(
-      safeTransferFrom, [alice, composable.address, 2, bytes1 ]
+      transferChild, [alice, composable.address, 2, bytes1 ]
     );
     const tx = await web3.eth.sendTransaction({
       from: alice, to: composable.address, data: transferMethodTransactionData, value: 0, gas: 500000
     });
-    assert(tx != undefined, 'no tx using safeTransferFrom');
+    assert(tx != undefined, 'no tx using transferChild');
   });
   
   /**************************************

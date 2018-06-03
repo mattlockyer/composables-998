@@ -45,10 +45,10 @@ contract ERC998PossessERC721 is ERC998NFT, ERC998NFTEnumerable {
   
 
   function onERC721Received(address _from, uint256 _childTokenId, bytes _data) external returns(bytes4) {
-    require(_data.length > 0, "_data must contain the uint256 tokenId to transfer the child token to.");      
+    require(_data.length > 0, "_data must contain the uint256 tokenId to transfer the child token to.");
     /**************************************
     * TODO move to library
-    **************************************/  
+    **************************************/
     // convert up to 32 bytes of_data to uint256, owner nft tokenId passed as uint in bytes
     uint256 _tokenId;
     assembly {
@@ -100,26 +100,24 @@ contract ERC998PossessERC721 is ERC998NFT, ERC998NFTEnumerable {
   }
 
   function transferChild(address _to, uint256 _tokenId, address _childContract, uint256 _childTokenId) public {
+    removeChild(_tokenId, _childContract, _childTokenId);
     //require that the child was transfered safely to it's destination
     require(
       _childContract.call(
         bytes4(keccak256("safeTransferFrom(address,address,uint256)")), this, _to, _childTokenId
       )
     );
-    //let's put this here for logic sake (after all require conditions pass)
-    removeChild(_tokenId, _childContract, _childTokenId);
     emit TransferChild(_to, new bytes(0), _childTokenId);
   }
 
   function transferChild(address _to, uint256 _tokenId, address _childContract, uint256 _childTokenId, bytes _data) public {
+    removeChild(_tokenId, _childContract, _childTokenId);
     //require that the child was transfered safely to it's destination
     require(
       _childContract.call(
         bytes4(keccak256("safeTransferFrom(address,address,uint256,bytes)")), this, _to, _childTokenId, _data
       )
     );
-    //let's put this here for logic sake (after all require conditions pass)
-    removeChild(_tokenId, _childContract, _childTokenId);
     emit TransferChild(_to, _data, _childTokenId);
   }
 
