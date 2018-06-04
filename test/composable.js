@@ -217,12 +217,20 @@ contract('Composable', function(accounts) {
     const tx = await composable.transferChildToComposable(composable.address, sampleNFT.address, 2, bytes1);
     assert(tx, 'tx undefined using transferChildToComposable');
   });
-  /*
+  
+   it('should have sampleNFT contract', async () => {
+    const contracts = await composable.childContractsByToken.call(1);
+    
+    console.log(contracts, composable.address, sampleNFT.address);
+    
+    assert(contracts[0] === sampleNFT.address, 'composable does not have sampleNFT contract');
+  });
+  
   it('should own sampleNFT, Composable', async () => {
-    const owned = await composable.childExists(sampleNFT.address, 1);
+    const owned = await composable.childExists(sampleNFT.address, 2);
     assert(owned, 'composable does not own sampleNFT');
   });
-  */
+  
   /**************************************
   * Checking array, should have added sampleNFT after transfer
   **************************************/

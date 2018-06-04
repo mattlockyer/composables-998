@@ -11,6 +11,7 @@ interface ERC998NFT {
 
   function ownerOfChild(address _childContract, uint256 _childTokenId) external view returns (uint256 tokenId);
   function onERC721Received(address _from, uint256 _childTokenId, bytes _data) external returns(bytes4);
+  function receiveChild(address _from, uint256 _childTokenId, bytes _data) external;
   function transferChild(address _to,  address _childContract, uint256 _childTokenId) public;
   function transferChildToComposable(address _to, address _childContract, uint256 _childTokenId, bytes data) public;
 }
@@ -72,7 +73,11 @@ contract ERC998PossessERC721 is ERC721Token, ERC998NFT, ERC998NFTEnumerable {
     }
   }
   
-  function onERC721Received(address _from, uint256 _childTokenId, bytes _data) external returns(bytes4) {
+  /**************************************
+  * Internal function to receive child
+  **************************************/
+  
+  function receiveChild(address _from, uint256 _childTokenId, bytes _data) external {
     require(_data.length > 0, "_data must contain the uint256 tokenId to transfer the child token to.");
     /**************************************
     * TODO move to library
@@ -87,8 +92,7 @@ contract ERC998PossessERC721 is ERC721Token, ERC998NFT, ERC998NFTEnumerable {
     }
     //END TODO
 
-    address childContract = msg.sender;
-
+    address childContract = _from;
     uint256 childTokensLength = childTokens[_tokenId][childContract].length;
     if(childTokensLength == 0) {
       childContractIndex[_tokenId][childContract] = childContracts[_tokenId].length;
@@ -97,8 +101,15 @@ contract ERC998PossessERC721 is ERC721Token, ERC998NFT, ERC998NFTEnumerable {
     childTokens[_tokenId][childContract].push(_childTokenId);
     childTokenIndex[_tokenId][childContract][_childTokenId] = childTokensLength + 1;
     childTokenOwner[childContract][_childTokenId] = _tokenId;
-
     emit ReceivedChild(_tokenId, childContract, _childTokenId, _from);
+  }
+  
+  /**************************************
+  * External functions for receive and transfer
+  **************************************/
+  
+  function onERC721Received(address _from, uint256 _childTokenId, bytes _data) external returns(bytes4) {
+    ERC998NFT(this).receiveChild(msg.sender, _childTokenId, _data);
     return ERC721_RECEIVED;
   }
 
@@ -117,7 +128,7 @@ contract ERC998PossessERC721 is ERC721Token, ERC998NFT, ERC998NFTEnumerable {
 
   function transferChildToComposable(address _to, address _childContract, uint256 _childTokenId, bytes _data) public {
     transferChild(_to, _childContract, _childTokenId);
-    ERC998NFT(_to).onERC721Received(this, _childTokenId, _data);
+    ERC998NFT(_to).receiveChild(_childContract, _childTokenId, _data);
   }
 
   function ownerOfChild(address _childContract, uint256 _childTokenId) public view returns (uint256 tokenId) {
