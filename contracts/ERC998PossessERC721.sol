@@ -1,17 +1,18 @@
+pragma solidity ^0.4.24;
 
+import "zeppelin-solidity/contracts/token/ERC721/ERC721Token.sol";
 
 //jshint ignore: start
 
-pragma solidity ^0.4.24;
 
 interface ERC998NFT {
   event ReceivedChild(uint256 indexed _tokenId, address indexed _childContract, uint256 _childTokenId, address indexed _from);
-  event TransferChild(address indexed _to, bytes _data, uint256 indexed _childTokenId);
+  event TransferChild(address indexed _to, bytes _data, address indexed _childContract, uint256 indexed _childTokenId);
 
-  function childOwnerOf(address _childContract, uint256 _childTokenId) external view returns (uint256 tokenId);
+  function ownerOfChild(address _childContract, uint256 _childTokenId) external view returns (uint256 tokenId);
   function onERC721Received(address _from, uint256 _childTokenId, bytes _data) external returns(bytes4);
-  function transferChild(address _to, uint256 _tokenId, address _childContract, uint256 _childTokenId) public;
-  function transferChildToComposable(address _to, uint256 _tokenId, address _childContract, uint256 _childTokenId, bytes data) public;
+  function transferChild(address _to,  address _childContract, uint256 _childTokenId) public;
+  function transferChildToComposable(address _to, address _childContract, uint256 _childTokenId, bytes data) public;
 }
 
 interface ERC998NFTEnumerable {
@@ -26,8 +27,8 @@ interface ERC721SafeSender {
 }
 
 
-contract ERC998PossessERC721 is ERC998NFT, ERC998NFTEnumerable {
-  
+contract ERC998PossessERC721 is ERC721Token, ERC998NFT, ERC998NFTEnumerable {
+
   //from zepellin ERC721Receiver.sol
   bytes4 constant ERC721_RECEIVED = 0xf0b9e5ba;
 
@@ -44,9 +45,9 @@ contract ERC998PossessERC721 is ERC998NFT, ERC998NFTEnumerable {
   mapping(uint256 => mapping(address => mapping(uint256 => uint256))) private childTokenIndex;
 
   // child address => childId => tokenId
-  mapping(address => mapping(uint256 => uint256)) private childTokenOwner;
+  mapping(address => mapping(uint256 => uint256)) internal childTokenOwner;
 
-  function removeChild(uint256 _tokenId, address _childContract, uint256 _childTokenId) internal {
+  function removeChild(uint256 _tokenId, address _childContract, uint256 _childTokenId) private {
     uint256 tokenIndex = childTokenIndex[_tokenId][_childContract][_childTokenId];
     require(tokenIndex != 0, "Child token not owned by token.");
 
@@ -101,23 +102,25 @@ contract ERC998PossessERC721 is ERC998NFT, ERC998NFTEnumerable {
     return ERC721_RECEIVED;
   }
 
-  function transferChild(address _to, uint256 _tokenId, address _childContract, uint256 _childTokenId) public {
-    removeChild(_tokenId, _childContract, _childTokenId);
+  function transferChild(address _to, address _childContract, uint256 _childTokenId) public {
+    uint256 tokenId = ownerOfChild(_childContract, _childTokenId);
+    require(isApprovedOrOwner(msg.sender, tokenId));
+    removeChild(tokenId, _childContract, _childTokenId);
     //require that the child was transfered safely to it's destination
     require(
       _childContract.call(
         bytes4(keccak256("transferFrom(address,address,uint256)")), this, _to, _childTokenId
       )
     );
-    emit TransferChild(_to, new bytes(0), _childTokenId);
+    emit TransferChild(_to, new bytes(0), _childContract, _childTokenId);
   }
 
-  function transferChildToComposable(address _to, uint256 _tokenId, address _childContract, uint256 _childTokenId, bytes _data) public {
-    transferChild(_to, _tokenId, _childContract, _childTokenId);
+  function transferChildToComposable(address _to, address _childContract, uint256 _childTokenId, bytes _data) public {
+    transferChild(_to, _childContract, _childTokenId);
     ERC998NFT(_to).onERC721Received(this, _childTokenId, _data);
   }
 
-  function childOwnerOf(address _childContract, uint256 _childTokenId) external view returns (uint256 tokenId) {
+  function ownerOfChild(address _childContract, uint256 _childTokenId) public view returns (uint256 tokenId) {
     tokenId = childTokenOwner[_childContract][_childTokenId];
     if(tokenId == 0) {
         require(childTokenIndex[tokenId][_childContract][_childTokenId] != 0, "Child token is not owned by any tokens.");
@@ -153,3 +156,4 @@ contract ERC998PossessERC721 is ERC998NFT, ERC998NFTEnumerable {
   }
 
 }
+
