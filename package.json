@@ -1,6 +1,0 @@
-{
-  "dependencies": {
-    "web3-eth-abi":"latest",
-    "web3-utils":"latest"
-  }
-}

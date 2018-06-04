@@ -2,7 +2,7 @@
 
 //jshint ignore: start
 
-pragma solidity ^0.4.18;
+pragma solidity ^0.4.21;
 
 /**
  * @title ERC721 token receiver interface
