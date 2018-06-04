@@ -24,6 +24,14 @@ contract Composable is ERC721Token, ERC998PossessERC721, ERC998PossessERC20 {
   }
   
   /**************************************
+  * TODO Where should this go? We shouldn't include this in every contract...
+  **************************************/
+  // implementation of the owns method from cryptokitties
+  function _owns(address _claimant, uint256 _tokenId) internal view returns(bool) {
+    return (tokenOwner[_tokenId] == _claimant);
+  }
+  
+  /**************************************
   * We MUST override transferChild from this contract
   *
   * TODO is there a better way to handle the check of _owns for tokenID?
@@ -34,18 +42,10 @@ contract Composable is ERC721Token, ERC998PossessERC721, ERC998PossessERC20 {
     super.transferChild(_to, _tokenId, _childContract, _childTokenId);
   }
 
-  function transferChild(address _to, uint256 _tokenId, address _childContract, uint256 _childTokenId, bytes _data) public {
+  function transferChildToComposable(address _to, uint256 _tokenId, address _childContract, uint256 _childTokenId, bytes _data) public {
     //how can we push down to extension?
     require(_owns(msg.sender, _tokenId));
-    super.transferChild(_to, _tokenId, _childContract, _childTokenId, _data);
-  }
-  
-  /**************************************
-  * TODO Where should this go? We shouldn't include this in every contract...
-  **************************************/
-  // implementation of the owns method from cryptokitties
-  function _owns(address _claimant, uint256 _tokenId) internal view returns(bool) {
-    return (tokenOwner[_tokenId] == _claimant);
+    super.transferChildToComposable(_to, _tokenId, _childContract, _childTokenId, _data);
   }
   
   
