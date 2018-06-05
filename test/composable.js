@@ -211,13 +211,20 @@ contract('Composable', function(accounts) {
   });
   
   /**************************************
-  * Checking transferChildToComposable from Composable
+  * Checking safeTransferChild from Composable to Composable
   **************************************/
-  it('should transferChildToComposable to from composable 2 to composable 1', async () => {
-    const tx = await composable.transferChildToComposable(composable.address, sampleNFT.address, 2, bytes1);
-    assert(tx, 'tx undefined using transferChildToComposable');
-  });
-  
+  it('should safeTransferChild from composable 2 to composable 1', async () => {
+    //address _to, address _childContract, uint256 _childTokenId, bytes _data
+    const safeTransferChild = Composable.abi.filter(f => f.name === 'safeTransferChild' && f.inputs.length === 4)[0];
+    const transferMethodTransactionData = web3Abi.encodeFunctionCall(
+      safeTransferChild, [composable.address, sampleNFT.address, 2, bytes1]
+    );
+    const tx = await web3.eth.sendTransaction({
+      from: alice, to: composable.address, data: transferMethodTransactionData, value: 0, gas: 500000
+    });
+    assert(tx, 'tx undefined using safeTransferChild');
+    });
+
    it('should have sampleNFT contract', async () => {
     const contracts = await composable.childContractsByToken.call(1);
     
