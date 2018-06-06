@@ -6,14 +6,15 @@ import "zeppelin-solidity/contracts/token/ERC721/ERC721Token.sol";
 
 
 interface ERC998NFT {
-  event ReceivedChild(uint256 indexed _tokenId, address indexed _childContract, uint256 _childTokenId, address indexed _from);
-  event TransferChild(address indexed _to, bytes _data, address indexed _childContract, uint256 indexed _childTokenId);
+  event ReceivedChild(address indexed _from, uint256 indexed _tokenId, address indexed _childContract, uint256 _childTokenId);
+  event TransferChild(uint256 indexed tokenId, address indexed _to, address indexed _childContract, uint256 _childTokenId);
 
   function ownerOfChild(address _childContract, uint256 _childTokenId) external view returns (uint256 tokenId);
   function onERC721Received(address _from, uint256 _childTokenId, bytes _data) external returns(bytes4);
-  function receiveChild(address _from, uint256 _childTokenId, bytes _data) external;
-  function transferChild(address _to,  address _childContract, uint256 _childTokenId) public;
-  function transferChildToComposable(address _to, address _childContract, uint256 _childTokenId, bytes data) public;
+  function transferChild(address _to, address _childContract, uint256 _childTokenId) external;
+  function safeTransferChild(address _to, address _childContract, uint256 _childTokenId) external;
+  function safeTransferChild(address _to, address _childContract, uint256 _childTokenId, bytes _data) external;
+  function getChild(address _from, uint256 _tokenId, address _childContract, uint256 _childTokenId) external;
 }
 
 interface ERC998NFTEnumerable {
@@ -72,63 +73,71 @@ contract ERC998PossessERC721 is ERC721Token, ERC998NFT, ERC998NFTEnumerable {
       delete childContractIndex[_tokenId][_childContract];
     }
   }
-  
-  /**************************************
-  * Internal function to receive child
-  **************************************/
-  
-  function receiveChild(address _from, uint256 _childTokenId, bytes _data) external {
-    require(_data.length > 0, "_data must contain the uint256 tokenId to transfer the child token to.");
-    /**************************************
-    * TODO move to library
-    **************************************/
-    // convert up to 32 bytes of_data to uint256, owner nft tokenId passed as uint in bytes
-    uint256 _tokenId;
-    assembly {
-      _tokenId := calldataload(132)
-    }
-    if(_data.length < 32) {
-      _tokenId = _tokenId >> 256 - _data.length * 8;
-    }
-    //END TODO
 
-    address childContract = _from;
-    uint256 childTokensLength = childTokens[_tokenId][childContract].length;
-    if(childTokensLength == 0) {
-      childContractIndex[_tokenId][childContract] = childContracts[_tokenId].length;
-      childContracts[_tokenId].push(childContract);
-    }
-    childTokens[_tokenId][childContract].push(_childTokenId);
-    childTokenIndex[_tokenId][childContract][_childTokenId] = childTokensLength + 1;
-    childTokenOwner[childContract][_childTokenId] = _tokenId;
-    emit ReceivedChild(_tokenId, childContract, _childTokenId, _from);
-  }
-  
-  /**************************************
-  * External functions for receive and transfer
-  **************************************/
-  
-  function onERC721Received(address _from, uint256 _childTokenId, bytes _data) external returns(bytes4) {
-    ERC998NFT(this).receiveChild(msg.sender, _childTokenId, _data);
-    return ERC721_RECEIVED;
-  }
-
-  function transferChild(address _to, address _childContract, uint256 _childTokenId) public {
+  function safeTransferChild(address _to, address _childContract, uint256 _childTokenId) external {
     uint256 tokenId = ownerOfChild(_childContract, _childTokenId);
     require(isApprovedOrOwner(msg.sender, tokenId));
     removeChild(tokenId, _childContract, _childTokenId);
-    //require that the child was transfered safely to it's destination
-    require(
-      _childContract.call(
-        bytes4(keccak256("transferFrom(address,address,uint256)")), this, _to, _childTokenId
-      )
-    );
-    emit TransferChild(_to, new bytes(0), _childContract, _childTokenId);
+    ERC721Basic(_childContract).safeTransferFrom(this, _to, _childTokenId);
+    emit TransferChild(tokenId, _to, _childContract, _childTokenId);
   }
 
-  function transferChildToComposable(address _to, address _childContract, uint256 _childTokenId, bytes _data) public {
-    transferChild(_to, _childContract, _childTokenId);
-    ERC998NFT(_to).receiveChild(_childContract, _childTokenId, _data);
+  function safeTransferChild(address _to, address _childContract, uint256 _childTokenId, bytes _data) external {
+    uint256 tokenId = ownerOfChild(_childContract, _childTokenId);
+    require(isApprovedOrOwner(msg.sender, tokenId));
+    removeChild(tokenId, _childContract, _childTokenId);
+    ERC721Basic(_childContract).safeTransferFrom(this, _to, _childTokenId, _data);
+    emit TransferChild(tokenId, _to, _childContract, _childTokenId);
+  }
+
+  function transferChild(address _to, address _childContract, uint256 _childTokenId) external {
+    uint256 tokenId = ownerOfChild(_childContract, _childTokenId);
+    require(isApprovedOrOwner(msg.sender, tokenId));
+    removeChild(tokenId, _childContract, _childTokenId);
+    ERC721Basic(_childContract).transferFrom(this, _to, _childTokenId);
+    emit TransferChild(tokenId, _to, _childContract, _childTokenId);
+  }
+
+  function onERC721Received(address _from, uint256 _childTokenId, bytes _data) external returns(bytes4) {
+    require(_data.length > 0, "_data must contain the uint256 tokenId to transfer the child token to.");
+    /**************************************
+   * TODO move to library
+   **************************************/
+    // convert up to 32 bytes of_data to uint256, owner nft tokenId passed as uint in bytes
+    uint256 tokenId;
+    assembly {
+      tokenId := calldataload(132)
+    }
+    if(_data.length < 32) {
+      tokenId = tokenId >> 256 - _data.length * 8;
+    }
+    //END TODO
+
+    require(this == ERC721Basic(msg.sender).ownerOf(_childTokenId), "This contract does not own the child token.");
+
+    receiveChild(_from, tokenId, msg.sender, _childTokenId);
+    return ERC721_RECEIVED;
+  }
+
+
+  function receiveChild(address _from,  uint256 _tokenId, address _childContract, uint256 _childTokenId) private {
+    require(exists(_tokenId), "tokenId does not exist.");
+    require(childTokenIndex[_tokenId][_childContract][_childTokenId] == 0, "Cannot receive child token because it has already been received.");
+    uint256 childTokensLength = childTokens[_tokenId][_childContract].length;
+    if(childTokensLength == 0) {
+      childContractIndex[_tokenId][_childContract] = childContracts[_tokenId].length;
+      childContracts[_tokenId].push(_childContract);
+    }
+    childTokens[_tokenId][_childContract].push(_childTokenId);
+    childTokenIndex[_tokenId][_childContract][_childTokenId] = childTokensLength + 1;
+    childTokenOwner[_childContract][_childTokenId] = _tokenId;
+    emit ReceivedChild(_from, _tokenId, _childContract, _childTokenId);
+  }
+
+  // this contract has to be approved first by _childContract
+  function getChild(address _from, uint256 _tokenId, address _childContract, uint256 _childTokenId) external {
+    receiveChild(_from, _tokenId, _childContract, _childTokenId);
+    ERC721Basic(_childContract).transferFrom(_from, this, _childTokenId);
   }
 
   function ownerOfChild(address _childContract, uint256 _childTokenId) public view returns (uint256 tokenId) {
