@@ -2,147 +2,104 @@
 
 //jshint ignore: start
 
-pragma solidity ^0.4.24;
+pragma solidity ^0.4.21;
 
-import "zeppelin-solidity/contracts/token/ERC721/ERC721Token.sol";
-import "zeppelin-solidity/contracts/AddressUtils.sol";
+import "./ERC20Receiver.sol";
+import "./ERC998Helpers.sol";
 
-interface ERC998FT {
-  event ReceivedToken(address indexed _from, uint256 indexed _tokenId, address indexed _tokenContract, uint256 _value);
-  event TransferToken(uint256 indexed _tokenId, address indexed _to, address indexed _tokenContract, uint256 _value);
-
-  function tokenFallback(address _from, uint256 _value, bytes _data) external;
-  function balanceOfToken(uint256 _tokenId, address __tokenContract) external view returns(uint256);
-  function transferToken(uint256 _tokenId, address _to, address _tokenContract, uint256 _value) external;
-  function transferToken(uint256 _tokenId, address _to, address _tokenContract, uint256 _value, bytes _data) external;
-  function getToken(address _from, uint256 _tokenId, address _tokenContract, uint256 _value) external;
-
-}
-
-interface ERC998FTEnumerable {
-  function totalTokenContracts(uint256 _tokenId) external view returns(uint256);
-  function tokenContractByIndex(uint256 _tokenId, uint256 _index) external view returns(address);
-}
-
-
-
-
-
-contract ERC998PossessERC20 is ERC721Token, ERC998FT, ERC998FTEnumerable {
-  using AddressUtils for address;
+contract ERC998PossessERC20 is ERC20Receiver {
 
   /**************************************
   * ERC998PossessERC20 Begin
   **************************************/
-
-  // tokenId => token contract
-  mapping(uint256 => address[]) tokenContracts;
   
-  // tokenId => (token contract => token contract index)
-  mapping(uint256 => mapping(address => uint256)) tokenContractIndex;
-
-  // tokenId => (token contract => balance)
-  mapping(uint256 => mapping(address => uint256)) tokenBalances;
-
-  function balanceOfToken(uint256 _tokenId, address _tokenContract) external view returns(uint256) {
-    return tokenBalances[_tokenId][_tokenContract];
-  }
+  // mapping from nft to all ftp contracts
+  mapping(uint256 => address[]) ftpContracts;
   
-
-  function removeToken(uint256 _tokenId, address _tokenContract, uint256 _value) private {
-    if(_value == 0) {
-      return;
-    }
-    uint256 tokenBalance = tokenBalances[_tokenId][_tokenContract];
-    require(tokenBalance >= _value, "Not enough token available to transfer.");
-    uint256 newTokenBalance = tokenBalance - _value;
-    tokenBalances[_tokenId][_tokenContract] = newTokenBalance;
-    if(newTokenBalance == 0) {
-      uint256 contractIndex = tokenContractIndex[_tokenId][_tokenContract];
-      uint256 lastContractIndex = tokenContracts[_tokenId].length - 1;
-      address lastContract = tokenContracts[_tokenId][lastContractIndex];
-      tokenContracts[_tokenId][contractIndex] = lastContract;
-      tokenContractIndex[_tokenId][lastContract] = contractIndex;
-      tokenContracts[_tokenId].length--;
-      delete tokenContractIndex[_tokenId][_tokenContract];
-    }
+  // mapping for the ftp contract index
+  mapping(uint256 => mapping(address => uint256)) ftpContractIndex;
+  
+  // mapping from contract pseudo-address owner ftp to the tokenIds
+  mapping(address => uint256) ftpBalances;
+  
+  /**************************************
+  * Public View Functions (wallet integration)
+  **************************************/
+  
+  // returns the ftp contracts owned by a composable
+  function ftpContractsOwnedBy(uint256 _tokenId) public view returns(address[]) {
+    return ftpContracts[_tokenId];
   }
   
-
-  function transferToken(uint256 _tokenId, address _to, address _tokenContract, uint256 _value) external {
-    require(isApprovedOrOwner(msg.sender, _tokenId));
-    removeToken(_tokenId, _tokenContract, _value);
+  // returns the ftps owned by the composable for a specific ftp contract
+  function ftpBalanceOf(uint256 _tokenId, address _ftpContract) public view returns(uint256) {
+    return ftpBalances[_ftpAddress(_tokenId, _ftpContract)];
+  }
+  
+  /**************************************
+  * Utility Methods
+  **************************************/
+  
+  // generates a pseudo-address from the nft that owns, ftp contract
+  function _ftpAddress(uint256 _tokenId, address _ftpContract) internal pure returns(address) {
+    return address(keccak256(_tokenId, _ftpContract));
+  }
+  
+  function _ftpRemoveContract(uint256 _tokenId, address _ftpContract) internal {
+    uint256 contractIndex = ftpContractIndex[_tokenId][_ftpContract];
+    uint256 lastContractIndex = ftpContracts[_tokenId].length - 1;
+    address lastContract = ftpContracts[_tokenId][lastContractIndex];
+    ftpContracts[_tokenId][contractIndex] = lastContract;
+    ftpContracts[_tokenId][lastContractIndex] = 0;
+    ftpContracts[_tokenId].length--;
+    ftpContractIndex[_tokenId][_ftpContract] = 0;
+    ftpContractIndex[_tokenId][lastContract] = contractIndex;
+  }
+  
+  /**************************************
+  * Internal Transfer and Receive FTPs (ERC20s)
+  **************************************/
+  function transferFTP(
+    address _to, uint256 _tokenId, address _ftpContract, uint256 _value
+  ) internal {
+    address ftp = _ftpAddress(_tokenId, _ftpContract);
+    //require that the ftp balance is enough
+    require(ftpBalances[ftp] >= _value);
+    //require that the ftp value was transfered
     require(
-      _tokenContract.call(
-        abi.encodeWithSignature("transfer(address,uint256)", _to, _value), "Token transfer failed."
-      )
+      _ftpContract.call(bytes4(keccak256("transfer(address,uint256)")), _to, _value)
     );
-    emit TransferToken(_tokenId, _to, _tokenContract, _value);
+    ftpBalances[ftp] -= _value;
+    // remove the ftp contract and index
+    _ftpRemoveContract(_tokenId, _ftpContract);
   }
-
-  // implementation of ERC 223
-  function transferToken(uint256 _tokenId, address _to, address _tokenContract, uint256 _value, bytes _data) external {
-    require(isApprovedOrOwner(msg.sender, _tokenId));
-    require(tokenBalances[_tokenId][_tokenContract] >= _value, "Not enough token available to transfer.");
-    tokenReceived(this, _tokenId, _tokenContract, _value);
-    require(
-      _tokenContract.call(
-        abi.encodeWithSignature("transfer(address,uint256,bytes)", _to, _value, _data), "Token transfer failed."
-      )
-    );
-    emit TransferToken(_tokenId, _to, _tokenContract, _value);
+  
+  function ftpReceived(address _from, uint256 _value, bytes _data) internal {
+    // convert _data bytes to uint256, owner nft tokenId passed as string in bytes
+    // bytesToUint(_data) i.e. tokenId = 5 would be "5" coming from web3 or another contract
+    uint256 _tokenId = ERC998Helpers.bytesToUint(_data);
+    // log the ftp contract and index
+    ftpContractIndex[_tokenId][_from] = ftpContracts[_tokenId].length;
+    ftpContracts[_tokenId].push(_from);
+    // update balances
+    ftpBalances[_ftpAddress(_tokenId, _from)] = _value;
   }
-
-  function tokenReceived(address _from, uint256 _tokenId, address _tokenContract, uint256 _value) private {
-    require(exists(_tokenId), "tokenId does not exist.");
-    require(_tokenContract.isContract(), "Supplied token contract is not a contract");
-    if(_value == 0) {
-      return;
-    }
-    uint256 tokenBalance = tokenBalances[_tokenId][_tokenContract];
-    if(tokenBalance == 0) {
-      tokenContractIndex[_tokenId][_tokenContract] = tokenContracts[_tokenId].length;
-      tokenContracts[_tokenId].push(_tokenContract);
-    }
-    tokenBalances[_tokenId][_tokenContract] += _value;
-    emit ReceivedToken(_from, _tokenId, _tokenContract, _value);
+  
+  /**************************************
+  * Public Transfer and Receive Methods
+  **************************************/
+  
+  function safeTransferFTP(
+    address _to, uint256 _tokenId, address _ftpContract, uint256 _value, bytes _data
+  ) public {
+    transferFTP(_to, _tokenId, _ftpContract, _value);
+    ftpReceived(_ftpContract, _value, _data);
   }
-
-  // used by ERC 223: c
-  function tokenFallback(address _from, uint256 _value, bytes _data) external {
-    require(_data.length > 0, "_data must contain the uint256 tokenId to transfer the token to.");
-    /**************************************
-    * TODO move to library
-    **************************************/
-    // convert up to 32 bytes of_data to uint256, owner nft tokenId passed as uint in bytes
-    uint256 tokenId;
-    assembly {
-      tokenId := calldataload(132)
-    }
-    if(_data.length < 32) {
-      tokenId = tokenId >> 256 - _data.length * 8;
-    }
-    //END TODO
-    tokenReceived(_from, tokenId, msg.sender, _value);
-  }
-
-  // this contract has to be approved first by _tokenContract
-  function getToken(address _from, uint256 _tokenId, address _tokenContract, uint256 _value) external {
-    tokenReceived(_from, _tokenId, _tokenContract, _value);
-    require(
-      _tokenContract.call(
-        abi.encodeWithSignature("transferFrom(address,address,uint256)", _from, this, _value), "Token transfer failed."
-      )
-    );
-  }
-
-  function tokenContractByIndex(uint256 _tokenId, uint256 _index) external view returns(address) {
-    require(_index < tokenContracts[_tokenId].length, "Contract address does not exist for this token and index.");
-    return tokenContracts[_tokenId][_index];
-  }
-
-  function totalTokenContracts(uint256 _tokenId) external view returns(uint256) {
-    return tokenContracts[_tokenId].length;
+  
+  
+  function onERC20Received(address _from, uint256 _value, bytes _data) public returns(bytes4) {
+    ftpReceived(msg.sender, _value, _data);
+    return ERC20_RECEIVED;
   }
   
 }

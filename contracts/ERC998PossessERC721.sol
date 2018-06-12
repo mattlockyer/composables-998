@@ -24,6 +24,11 @@ interface ERC998NFTEnumerable {
   function childTokenByIndex(uint256 _tokenId, address _childContract, uint256 _index) external view returns (uint256 childTokenId);
 }
 
+interface ERC721SafeSender {
+  function totalChildContracts(uint256 _tokenId) external view returns(uint256);
+}
+
+
 contract ERC998PossessERC721 is ERC721Token, ERC998NFT, ERC998NFTEnumerable {
 
   //from zepellin ERC721Receiver.sol
@@ -146,6 +151,10 @@ contract ERC998PossessERC721 is ERC721Token, ERC998NFT, ERC998NFTEnumerable {
   function childExists(address _childContract, uint256 _childTokenId) external view returns (bool) {
     uint256 tokenId = childTokenOwner[_childContract][_childTokenId];
     return childTokenIndex[tokenId][_childContract][_childTokenId] != 0;
+  }
+  
+  function childContractsByToken(uint256 _tokenId) external view returns(address[]) {
+    return childContracts[_tokenId];
   }
 
   function totalChildContracts(uint256 _tokenId) external view returns(uint256) {
