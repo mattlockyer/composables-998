@@ -1,0 +1,15 @@
+{
+  "name": "composables-998",
+  "version": "1.0.0",
+  "description": "ERC-998 implementation for Non-Fungible token possessions",
+  "repository": "git@github.com:mattlockyer/composables-998.git",
+  "author": "Matt Lockyer <@mattdlockyer>",
+  "devDependencies": {
+    "truffle": "^4.1.11",
+    "web3-eth-abi": "^1.0.0-beta.34",
+    "zeppelin-solidity": "^1.10.0"
+  },
+  "scripts": {
+    "test": "truffle test"
+  }
+}
