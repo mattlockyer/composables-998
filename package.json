@@ -1,7 +1,7 @@
 {
   "name": "composables-998",
   "version": "1.0.0",
-  "description": "ERC-998 implementation for Non-Fungible token possessions",
+  "description": "ERC-998 WIP Implementation of Composable Non-Fungible Tokens (CNFTs)",
   "repository": "git@github.com:mattlockyer/composables-998.git",
   "author": "Matt Lockyer <@mattdlockyer>",
   "devDependencies": {
