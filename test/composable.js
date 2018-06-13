@@ -35,7 +35,17 @@ const promisify = (inner) => new Promise((resolve, reject) =>
 );
 const getBalance = (account, at) => promisify(cb => web3.eth.getBalance(account, at, cb));
 const timeout = ms => new Promise(res => setTimeout(res, ms))
-
+const setupTestTokens = async (numberOfNfts, numberOfERC20s) => {
+  nfts = [];
+  erc20s = [];
+  for (var i = 0; i < numberOfNfts; i++) {
+    nfts.push((await SampleNFT.new(String(i), String(i))));
+  }
+  for (var i = 0; i < numberOfERC20s; i++) {
+    erc20s.push((await SampleERC20.new(String(i), String(i))));
+  }
+  return [nfts, erc20s];
+}
 /**************************************
 * Tests
 **************************************/
@@ -372,7 +382,77 @@ contract('Composable', function(accounts) {
     assert(balanceOf.equals(250), 'ERC20 balance of composable NOT correct');
   });
 
+
+  /**************************************
+  * Multi Token tests
+  **************************************/
   
+  it('should return the correct number of totalTokenContracts when contracts are added (ERC20)', async () => {
+    const numTokens = 5;
+    const mintedAmount = 1000;
+    const transferedAmount = 500;
+    const [nfts, erc20s] = await setupTestTokens(0, numTokens);
+    for (var i = 0; i < erc20s.length; i++) {
+      await erc20s[i].mint(alice, mintedAmount);
+      const transfer = erc20s[i].abi.filter(f => f.name === 'transfer' && f.inputs.length === 3)[0];
+      const transferMethodTransactionData = web3Abi.encodeFunctionCall(
+        transfer, [composable.address, transferedAmount, bytes1]
+      );
+      const tx = await web3.eth.sendTransaction({
+        from: alice, to: erc20s[i].address, data: transferMethodTransactionData, value: 0, gas: 500000
+      });
+      const balance = await composable.balanceOfToken.call(1, erc20s[i].address);
+      assert(balance.equals(transferedAmount), `ERC20 #${i} balance of composable NOT correct`);
+    }
+    const numAddedTokenContracts = await composable.totalTokenContracts(1);
+    assert(numTokens === numAddedTokenContracts.toNumber());
+  });
+
+  it('should return the correct number of totalChildTokens when contracts are added (NFT)', async () => {
+    const numNFTs = 5;
+    const mintedPerNFT = 3;
+    const [nfts, erc20s] = await setupTestTokens(numNFTs, 0);
+    for (var i = 0; i < nfts.length; i++) {
+      const mintedTokens = [];
+      const safeTransferFrom = nfts[i].abi.filter(f => f.name === 'safeTransferFrom' && f.inputs.length === 4)[0];
+      for (var j = 0; j < mintedPerNFT; j++) {
+        await nfts[i].mint721(alice);
+        const mintedTokenId = j + 1;
+        mintedTokens.push(mintedTokenId);
+        const transferMethodTransactionData = web3Abi.encodeFunctionCall(
+          safeTransferFrom, [alice, composable.address, mintedTokenId, bytes1]
+        );
+        const tx = await web3.eth.sendTransaction({
+          from: alice, to: nfts[i].address, data: transferMethodTransactionData, value: 0, gas: 500000
+        });
+      }
+      const numNFTChildren = await composable.totalChildTokens(1, nfts[i].address);
+      assert(mintedTokens.length === numNFTChildren.toNumber());
+    }
+  });
+
+  it('should return the correct number of totalTokenContracts when contracts are removed (ERC20)', async () => {
+    const aliceComposableTokenId = 1;
+    let numTokenContracts = (await composable.totalTokenContracts(1)).toNumber();
+    let nextNumTokenContracts;
+    for (var i = 0; i < numTokenContracts; i++) {
+      const tokenAddress = await composable.tokenContractByIndex(aliceComposableTokenId, i);
+      const remainingBalance = await composable.balanceOfToken.call(aliceComposableTokenId, tokenAddress);
+      // const tx = await composable.transferToken(aliceComposableTokenId, alice, tokenAddress, remainingBalance);
+      const transferToken = composable.abi.filter(f => f.name === 'transferToken' && f.inputs.length === 4)[0];
+      const transferMethodTransactionData = web3Abi.encodeFunctionCall(
+        transferToken, [aliceComposableTokenId, alice, tokenAddress, transferedAmount]
+      );
+
+      // Something bad happens here... :'(
+      const tx = await web3.eth.sendTransaction({
+        from: alice, to: composable.address, data: transferMethodTransactionData, value: 0, gas: 500000
+      });
+      nextNumTokenContracts = (await composable.totalTokenContracts(1)).toNumber();
+      assert(numTokenContracts === nextNumTokenContracts - 1);
+      numTokenContracts = nextNumTokenContracts;
+    }
+  });
 });
 
 //jshint ignore: end
