@@ -9,10 +9,6 @@ import "./ERC998PossessERC721.sol";
 
 contract Composable is ERC998PossessERC721, ERC998PossessERC20 {
 
-  /**************************************
-  * ERC-721 Setup Methods for Testing
-  **************************************/
-
   // pass through constructor, remove?
   constructor(string _name, string _symbol) public ERC721Token(_name, _symbol) {}
 
