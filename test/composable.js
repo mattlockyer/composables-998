@@ -267,6 +267,7 @@ contract('Composable', function(accounts) {
   
   it('token 1 should own SampleNFT child token 2', async () => {
     const tokenId = await composable.ownerOfChild.call(SampleNFT.address, 2);
+    //console.log(tokenId);
     assert(tokenId.equals(1), 'SampleNFT child token 2 is not owned by a composable token.');
   });
 
