@@ -227,15 +227,15 @@ contract('Composable', function(accounts) {
     //address _to, address _childContract, uint256 _childTokenId, bytes _data
     const safeTransferChild = Composable.abi.filter(f => f.name === 'safeTransferChild' && f.inputs.length === 4)[0];
     const transferMethodTransactionData = web3Abi.encodeFunctionCall(
-      safeTransferChild, [composable.address, sampleNFT.address, 2, bytes1]
+      safeTransferChild, [composable.address, sampleNFT.address, 2, bytes1] 
     );
     const tx = await web3.eth.sendTransaction({
       from: alice, to: composable.address, data: transferMethodTransactionData, value: 0, gas: 500000
     });
     assert(tx, 'tx undefined using safeTransferChild');
-    });
+  });
 
-   it('should have sampleNFT contract', async () => {
+  it('should have sampleNFT contract', async () => {
     const contract = await composable.childContractByIndex.call(1,0);
     
     console.log(contract, composable.address, sampleNFT.address);
