@@ -36,13 +36,14 @@ const promisify = (inner) => new Promise((resolve, reject) =>
 const getBalance = (account, at) => promisify(cb => web3.eth.getBalance(account, at, cb));
 const timeout = ms => new Promise(res => setTimeout(res, ms))
 const setupTestTokens = async (numberOfNfts, numberOfERC20s) => {
-  nfts = [];
-  erc20s = [];
+  let nfts = [];
+  let erc20s = [];
+  let s = String(i);
   for (var i = 0; i < numberOfNfts; i++) {
-    nfts.push((await SampleNFT.new(String(i), String(i))));
+    nfts.push((await SampleNFT.new(s, s)));
   }
   for (var i = 0; i < numberOfERC20s; i++) {
-    erc20s.push((await SampleERC20.new(String(i), String(i))));
+    erc20s.push((await SampleERC20.new(s, s));
   }
   return [nfts, erc20s];
 }
