@@ -1,9 +1,10 @@
-pragma solidity ^0.4.24;
 
-import "zeppelin-solidity/contracts/token/ERC721/ERC721Token.sol";
 
 //jshint ignore: start
 
+pragma solidity ^0.4.24;
+
+import "zeppelin-solidity/contracts/token/ERC721/ERC721Token.sol";
 
 interface ERC998NFT {
   event ReceivedChild(address indexed _from, uint256 indexed _tokenId, address indexed _childContract, uint256 _childTokenId);
