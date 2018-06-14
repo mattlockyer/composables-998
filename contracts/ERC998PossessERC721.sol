@@ -45,6 +45,17 @@ contract ERC998PossessERC721 is ERC721Token, ERC998NFT, ERC998NFTEnumerable {
   // child address => childId => tokenId
   mapping(address => mapping(uint256 => uint256)) internal childTokenOwner;
 
+  function isApprovedOrOwnerOf(address _sender, address childContract, uint256 _childTokenId) public view returns (bool) {
+
+    uint256 tokenId = ownerOfChild(childContract,_childTokenId);
+    if(super.isApprovedOrOwner(_sender, tokenId)) {
+      return true;
+    }
+    address ownerUpOneLevel = ownerOf(tokenId);
+    return ERC998PossessERC721(ownerUpOneLevel).isApprovedOrOwnerOf(_sender, this, tokenId);
+  }
+
+
   function removeChild(uint256 _tokenId, address _childContract, uint256 _childTokenId) private {
     uint256 tokenIndex = childTokenIndex[_tokenId][_childContract][_childTokenId];
     require(tokenIndex != 0, "Child token not owned by token.");
@@ -72,7 +83,7 @@ contract ERC998PossessERC721 is ERC721Token, ERC998NFT, ERC998NFTEnumerable {
 
   function safeTransferChild(address _to, address _childContract, uint256 _childTokenId) external {
     uint256 tokenId = ownerOfChild(_childContract, _childTokenId);
-    require(isApprovedOrOwner(msg.sender, tokenId));
+    require(isApprovedOrOwnerOf(msg.sender, _childContract, _childTokenId));
     removeChild(tokenId, _childContract, _childTokenId);
     ERC721Basic(_childContract).safeTransferFrom(this, _to, _childTokenId);
     emit TransferChild(tokenId, _to, _childContract, _childTokenId);
@@ -80,7 +91,7 @@ contract ERC998PossessERC721 is ERC721Token, ERC998NFT, ERC998NFTEnumerable {
 
   function safeTransferChild(address _to, address _childContract, uint256 _childTokenId, bytes _data) external {
     uint256 tokenId = ownerOfChild(_childContract, _childTokenId);
-    require(isApprovedOrOwner(msg.sender, tokenId));
+    require(isApprovedOrOwnerOf(msg.sender, _childContract, _childTokenId));
     removeChild(tokenId, _childContract, _childTokenId);
     ERC721Basic(_childContract).safeTransferFrom(this, _to, _childTokenId, _data);
     emit TransferChild(tokenId, _to, _childContract, _childTokenId);
@@ -88,7 +99,7 @@ contract ERC998PossessERC721 is ERC721Token, ERC998NFT, ERC998NFTEnumerable {
 
   function transferChild(address _to, address _childContract, uint256 _childTokenId) external {
     uint256 tokenId = ownerOfChild(_childContract, _childTokenId);
-    require(isApprovedOrOwner(msg.sender, tokenId));
+    require(isApprovedOrOwnerOf(msg.sender, _childContract, _childTokenId));
     removeChild(tokenId, _childContract, _childTokenId);
     ERC721Basic(_childContract).transferFrom(this, _to, _childTokenId);
     emit TransferChild(tokenId, _to, _childContract, _childTokenId);
