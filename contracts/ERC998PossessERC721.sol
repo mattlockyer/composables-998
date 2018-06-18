@@ -15,6 +15,7 @@ interface ERC998NFT {
   function transferChild(address _to, address _childContract, uint256 _childTokenId) external;
   function safeTransferChild(address _to, address _childContract, uint256 _childTokenId) external;
   function safeTransferChild(address _to, address _childContract, uint256 _childTokenId, bytes _data) external;
+  function isApprovedOrOwnerOf(address _sender, address childContract, uint256 _childTokenId) public view returns (bool);
   function getChild(address _from, uint256 _tokenId, address _childContract, uint256 _childTokenId) external;
 }
 
@@ -46,7 +47,6 @@ contract ERC998PossessERC721 is ERC721Token, ERC998NFT, ERC998NFTEnumerable {
   mapping(address => mapping(uint256 => uint256)) internal childTokenOwner;
 
   function isApprovedOrOwnerOf(address _sender, address childContract, uint256 _childTokenId) public view returns (bool) {
-
     uint256 tokenId = ownerOfChild(childContract,_childTokenId);
     if(super.isApprovedOrOwner(_sender, tokenId)) {
       return true;
