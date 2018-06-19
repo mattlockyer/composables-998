@@ -57,7 +57,14 @@ contract('Composable', function(accounts) {
   const bytes3 = web3Utils.padLeft(web3Utils.toHex(3), 32);
   
   it('should be deployed, Composable', async () => {
-    composable = await Composable.deployed();
+
+    //composable = await Composable.deployed();
+
+    composable = await Composable.new("okay", "tkn");
+    const receipt = await web3.eth.getTransactionReceipt(composable.transactionHash);
+    console.log("gas used:" + receipt.gasUsed)
+
+
     
     /**************************************
     * If you need event logging
@@ -338,12 +345,12 @@ contract('Composable', function(accounts) {
 
 
   it('should one contract in composable "3"', async () => {
-    const contracts = await composable.totalTokenContracts.call(3);
+    const contracts = await composable.totalERC223Contracts.call(3);
     assert(contracts.equals(1), 'ERC20 balance of composable NOT correct');
   });
 
   it('should have half the balance of sampleERC20 in composable "3"', async () => {
-    const balance = await composable.balanceOfToken.call(3, sampleERC20.address);
+    const balance = await composable.balanceOfERC223.call(3, sampleERC20.address);
     assert(balance.equals(500), 'ERC20 balance of composable NOT correct');
   });
 
@@ -351,7 +358,7 @@ contract('Composable', function(accounts) {
     //const success = await composable.safeTransferFTP.call(bob, 3, sampleERC20.address, 250, bytes1);
     //assert(success, 'did not transfer ERC20 from composable');
     //const tx = await composable.safeTransferFTP(bob, 3, sampleERC20.address, 250, bytes1);
-    const transfer = Composable.abi.filter(f => f.name === 'transferToken' && f.inputs.length === 4)[0];
+    const transfer = Composable.abi.filter(f => f.name === 'transferERC223' && f.inputs.length === 4)[0];
     const transferMethodTransactionData = web3Abi.encodeFunctionCall(
       transfer, [3, bob, sampleERC20.address, 250]
     );
@@ -363,7 +370,7 @@ contract('Composable', function(accounts) {
   });
 
   it('composable "3" should have 250 tokens', async () => {
-    const balance = await composable.balanceOfToken.call(3, sampleERC20.address);
+    const balance = await composable.balanceOfERC223.call(3, sampleERC20.address);
     assert(balance.equals(250), 'ERC20 balance of composable NOT correct');
   });
 
