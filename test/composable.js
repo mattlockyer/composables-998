@@ -43,7 +43,7 @@ const setupTestTokens = async (numberOfNfts, numberOfERC20s) => {
     nfts.push((await SampleNFT.new(s, s)));
   }
   for (var i = 0; i < numberOfERC20s; i++) {
-    erc20s.push((await SampleERC20.new(s, s));
+    erc20s.push((await SampleERC20.new(s, s)));
   }
   return [nfts, erc20s];
 }
@@ -228,7 +228,7 @@ contract('Composable', function(accounts) {
     //address _to, address _childContract, uint256 _childTokenId, bytes _data
     const safeTransferChild = Composable.abi.filter(f => f.name === 'safeTransferChild' && f.inputs.length === 4)[0];
     const transferMethodTransactionData = web3Abi.encodeFunctionCall(
-      safeTransferChild, [composable.address, sampleNFT.address, 2, bytes1] 
+      safeTransferChild, [composable.address, sampleNFT.address, 2, bytes1]
     );
     const tx = await web3.eth.sendTransaction({
       from: alice, to: composable.address, data: transferMethodTransactionData, value: 0, gas: 500000
