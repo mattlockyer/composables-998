@@ -89,7 +89,18 @@ contract Composable is ERC721Token, ERC998ERC721, ERC998ERC721Enumerable, ERC998
       return true;
     }
     address ownerUpOneLevel = ownerOf(tokenId);
-    return ERC998ERC721(ownerUpOneLevel).isApprovedOrOwnerOf(_sender, this, tokenId);
+    // use staticcall opcode to enforce no state changes in external call
+    // using staticcall prevents reentrance attacks
+    bool callSuccess;
+    bool result;
+    bytes memory calldata = abi.encodeWithSelector(/* isApprovedOrOwnerOf */ 0xed9ac0eb, _sender, this, tokenId);
+    assembly {
+      callSuccess := staticcall(gas, ownerUpOneLevel, add(calldata, 0x20), mload(calldata), calldata, 0x20)
+      result := mload(calldata)
+    }
+    require(callSuccess, "isApprovedOrOwnerOf call failed");
+    return result;
+    //return ERC998ERC721(ownerUpOneLevel).isApprovedOrOwnerOf(_sender, this, tokenId);
   }
 
 
@@ -138,6 +149,10 @@ contract Composable is ERC721Token, ERC998ERC721, ERC998ERC721Enumerable, ERC998
     uint256 tokenId = ownerOfChild(_childContract, _childTokenId);
     require(isApprovedOrOwnerOf(msg.sender, _childContract, _childTokenId));
     removeChild(tokenId, _childContract, _childTokenId);
+    //this is here to be compatible with cryptokitties and other old contracts that require being owner and approved
+    // before transferring.
+    //does not work with current standard which does not allow approving self, so we must let it fail in that case.
+    _childContract.call(/* approve(address,uint256) */ 0x095ea7b3, this, _childTokenId);
     ERC721Basic(_childContract).transferFrom(this, _to, _childTokenId);
     emit TransferChild(tokenId, _to, _childContract, _childTokenId);
   }
