@@ -18,13 +18,8 @@ const web3Utils = require('web3-utils');
 const logEvent = (func) => {
   const event = func({ _from: web3.eth.coinbase }, { fromBlock: 0, toBlock: 'latest' });
   event.watch(function(error, result){
-    console.log(' * ' + result.event);
-    if (result.args._from) console.log(result.args._from);
-    if (result.args._to) console.log(result.args._to);
-    if (result.args._tokenId) console.log(result.args._tokenId.toNumber());
-    if (result.args._childContract) console.log(result.args._childContract);
-    if (result.args._childTokenId) console.log(result.args._childTokenId.toNumber());
-    if (result.args._data) console.log(result.args._data);
+    console.log('*** EVENT ***' + result.event);
+    result.args.forEach((arg) => console.log(arg));
   });
 }
 const promisify = (inner) => new Promise((resolve, reject) =>
