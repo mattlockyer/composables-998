@@ -3,7 +3,7 @@
 //jshint ignore: start
 
 // contracts
-const Composable = artifacts.require("./Composable.sol");
+const ComposableTopDown = artifacts.require("./ComposableTopDown.sol");
 const SampleNFT = artifacts.require("./SampleNFT.sol");
 const SampleERC20 = artifacts.require("./SampleERC20.sol");
 
@@ -40,7 +40,7 @@ const timeout = ms => new Promise(res => setTimeout(res, ms))
 * Tests
 **************************************/
 
-contract('Composable', function(accounts) {
+contract('ComposableTopDown', function(accounts) {
   
   let composable, sampleNFT, sampleERC20, alice = accounts[0], bob = accounts[1];
   
@@ -60,7 +60,7 @@ contract('Composable', function(accounts) {
 
     //composable = await Composable.deployed();
 
-    composable = await Composable.new("okay", "tkn");
+    composable = await ComposableTopDown.new("okay", "tkn");
     const receipt = await web3.eth.getTransactionReceipt(composable.transactionHash);
     console.log("gas used:" + receipt.gasUsed)
 
@@ -234,7 +234,7 @@ contract('Composable', function(accounts) {
   **************************************/
   it('should transferChild from composable 2 to composable 1', async () => {
     //address _to, address _childContract, uint256 _childTokenId, bytes _data
-    const transferChild = Composable.abi.filter(f => f.name === 'transferChild' && f.inputs.length === 4)[0];
+    const transferChild = ComposableTopDown.abi.filter(f => f.name === 'transferChild' && f.inputs.length === 4)[0];
     const transferMethodTransactionData = web3Abi.encodeFunctionCall(
       transferChild, [composable.address, sampleNFT.address, 2, bytes1]
     );
@@ -370,7 +370,7 @@ contract('Composable', function(accounts) {
     //const success = await composable.safeTransferFTP.call(bob, 3, sampleERC20.address, 250, bytes1);
     //assert(success, 'did not transfer ERC20 from composable');
     //const tx = await composable.safeTransferFTP(bob, 3, sampleERC20.address, 250, bytes1);
-    const transfer = Composable.abi.filter(f => f.name === 'transferERC223' && f.inputs.length === 4)[0];
+    const transfer = ComposableTopDown.abi.filter(f => f.name === 'transferERC223' && f.inputs.length === 4)[0];
     const transferMethodTransactionData = web3Abi.encodeFunctionCall(
       transfer, [3, bob, sampleERC20.address, 250]
     );

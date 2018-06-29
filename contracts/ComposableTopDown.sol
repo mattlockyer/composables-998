@@ -43,15 +43,15 @@ interface ERC998ERC223TopDownEnumerable {
 }
 
 interface ERC20AndERC223TransferFunctions {
-  function transferFrom(address _from, address _to, uint _value) returns (bool success);
+  function transferFrom(address _from, address _to, uint _value) public returns (bool success);
   function transfer(address to, uint value) public returns (bool success);
   function transfer(address to, uint value, bytes data) public returns (bool success);
 }
 
-contract Composable is ERC721Token, ERC998ERC721TopDown, ERC998ERC721TopDownEnumerable,
+contract ComposableTopDown is ERC721Token, ERC998ERC721TopDown, ERC998ERC721TopDownEnumerable,
                                      ERC998ERC223TopDown, ERC998ERC223TopDownEnumerable {
 
-  // pass through constructor, remove?
+
   constructor(string _name, string _symbol) public ERC721Token(_name, _symbol) {}
 
   // wrapper on minting new 721
