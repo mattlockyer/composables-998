@@ -8,18 +8,18 @@ interface ERC998ERC721BottomUp {
   event TransferAsChild(uint256 indexed _fromTokenId, uint256 indexed _toTokenId);
   event TransferToParent(uint256 indexed _toTokenId);
   event TransferFromParent(uint256 indexed _fromTokenId);
-  /*
-  The tokenOwner address can be either a user address or an ERC721 contract address.
-  If the tokenOwner address is a user address then parentTokenId will be 0 and should not be used or considered.
-  If tokenOwner address is a user address then isChild is false, otherwise isChild is true, which means that
-  _tokenId is a child of tokenOwner and parentTokenId.
+  /**
+  * The tokenOwner address can be either a user address or an ERC721 contract address.
+  * If the tokenOwner address is a user address then parentTokenId will be 0 and should not be used or considered.
+  * If tokenOwner address is a user address then isChild is false, otherwise isChild is true, which means that
+  * _tokenId is a child of tokenOwner and parentTokenId.
   */
   function tokenOwnerOf(uint256 _tokenId) external view returns (address tokenOwner, uint256 parentTokenId, bool isChild);
-  /*
-  In a bottom-up composable authentication to transfer etc. is done by getting the rootOwner by finding the parent token
-  and then the parent token of that one until a final owner address is found.  If the msg.sender is the rootOwner or is
-  approved by the rootOwner then msg.sender is authenticated and the action can occur.
-  This enables the owner of the top-most parent of a tree of composables to call any method on child composables.
+  /**
+  * In a bottom-up composable authentication to transfer etc. is done by getting the rootOwner by finding the parent token
+  * and then the parent token of that one until a final owner address is found.  If the msg.sender is the rootOwner or is
+  * approved by the rootOwner then msg.sender is authenticated and the action can occur.
+  * This enables the owner of the top-most parent of a tree of composables to call any method on child composables.
   */
   function rootOwnerOf(uint256 _tokenId) public view returns (address rootOwner);
   // Transfers _tokenId as a child to _toContract and _toTokenId
