@@ -173,7 +173,7 @@ contract ComposableBottomUp is ERC721, ERC998ERC721BottomUp {
     return tokenOwnerToOperators[_owner][_operator];
   }
 
-  function removeChild(address _fromContract, uint256 _fromTokenId, uint256 _tokenId) {
+  function removeChild(address _fromContract, uint256 _fromTokenId, uint256 _tokenId) internal {
     uint256 childTokenIndex = tokenIdToChildTokenIdsIndex[_tokenId];
     uint256 lastChildTokenIndex = parentToChildTokenIds[_fromContract][_fromTokenId].length - 1;
     uint256 lastChildTokenId = parentToChildTokenIds[_fromContract][_fromTokenId][lastChildTokenIndex];
