@@ -9,7 +9,8 @@ interface ERC998ERC721BottomUp {
   event TransferToParent(uint256 indexed _toTokenId);
   event TransferFromParent(uint256 indexed _fromTokenId);
   /**
-  * The tokenOwner address can be either a user address or an ERC721 contract address.
+  * The tokenOwnerOf function gets the owner of the _tokenId which can be a user address or another ERC721 token.
+  * The tokenOwner address return value can be either a user address or an ERC721 contract address.
   * If the tokenOwner address is a user address then parentTokenId will be 0 and should not be used or considered.
   * If tokenOwner address is a user address then isChild is false, otherwise isChild is true, which means that
   * tokenOwner is an ERC721 contract address and _tokenId is a child of tokenOwner and parentTokenId.
@@ -124,7 +125,7 @@ contract ComposableBottomUp is ERC721, ERC998ERC721BottomUp {
       }
       if(callSuccess == false) {
         //0x6352211e == "ownerOf(uint256)"
-        calldata = abi.encodeWithSelector(0x89885a59, parentTokenId);
+        calldata = abi.encodeWithSelector(0x6352211e, parentTokenId);
         assembly {
           callSuccess := staticcall(gas, rootOwner, add(calldata, 0x20), mload(calldata), calldata, 0x20)
           if callSuccess {
