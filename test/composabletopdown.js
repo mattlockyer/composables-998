@@ -3,7 +3,7 @@
 //jshint ignore: start
 
 // contracts
-const Composable = artifacts.require("./Composable.sol");
+const ComposableTopDown = artifacts.require("./ComposableTopDown.sol");
 const SampleNFT = artifacts.require("./SampleNFT.sol");
 const SampleERC20 = artifacts.require("./SampleERC20.sol");
 
@@ -46,7 +46,7 @@ const setupTestTokens = async (numberOfNfts, numberOfERC20s) => {
 * Tests
 **************************************/
 
-contract('Composable', function(accounts) {
+contract('ComposableTopDown', function(accounts) {
   
   let composable, sampleNFT, sampleERC20, alice = accounts[0], bob = accounts[1];
   
@@ -66,7 +66,7 @@ contract('Composable', function(accounts) {
 
     //composable = await Composable.deployed();
 
-    composable = await Composable.new("okay", "tkn");
+    composable = await ComposableTopDown.new("okay", "tkn");
     const receipt = await web3.eth.getTransactionReceipt(composable.transactionHash);
     console.log("gas used:" + receipt.gasUsed)
 
@@ -111,13 +111,18 @@ contract('Composable', function(accounts) {
     // no call support to overloaded functions (thanks truffle / Consensys... ugh!)
     // parent tokenId is a string because it's passed as bytes data
     // safeTransferFrom is index 13 on zeppelin ERC721
+    const tx = await sampleNFT.contract.safeTransferFrom['address,address,uint256,bytes'](alice, composable.address, 1, bytes1, { from: alice, gas: 500000 });
+    /*
     const safeTransferFrom = SampleNFT.abi.filter(f => f.name === 'safeTransferFrom' && f.inputs.length === 4)[0];
+    //console.log(safeTransferFrom);
     const transferMethodTransactionData = web3Abi.encodeFunctionCall(
       safeTransferFrom, [alice, composable.address, 1, bytes1]
     );
+    //console.log(transferMethodTransactionData);
     const tx = await web3.eth.sendTransaction({
       from: alice, to: sampleNFT.address, data: transferMethodTransactionData, value: 0, gas: 500000
     });
+    */
     assert(tx != undefined, 'no tx using safeTransferFrom');
   });
   
@@ -125,7 +130,13 @@ contract('Composable', function(accounts) {
     const owned = await composable.childExists(sampleNFT.address, 1);
     assert(owned, 'composable does not own sampleNFT');
   });
-  
+
+  it('should get owning token of Composable', async () => {
+      const approved = await composable.isApprovedOrOwnerOf(alice, sampleNFT.address, 1);
+      //console.log("tokenID:"+tokenId);
+      assert(approved, 'composable parent not found');
+    });
+
   /**************************************
   * Checking array, should have added sampleNFT after transfer
   **************************************/
@@ -159,7 +170,8 @@ contract('Composable', function(accounts) {
   });
   
   it('should transfer child to alice', async () => {
-    const tx = await composable.transferChild(alice, sampleNFT.address, 1, { from: bob });
+    //const tx = await composable.transferChild(alice, sampleNFT.address, 1, { from: bob });
+    const tx = await composable.contract.transferChild['address,address,uint256'](alice, sampleNFT.address, 1, { from: bob, gas: 500000 });
     assert(tx, 'Transaction undefined');
   });
   
@@ -226,17 +238,22 @@ contract('Composable', function(accounts) {
   /**************************************
   * Checking safeTransferChild from Composable to Composable
   **************************************/
-  it('should safeTransferChild from composable 2 to composable 1', async () => {
+  it('should transferChild from composable 2 to composable 1', async () => {
     //address _to, address _childContract, uint256 _childTokenId, bytes _data
-    const safeTransferChild = Composable.abi.filter(f => f.name === 'safeTransferChild' && f.inputs.length === 4)[0];
+    const transferChild = ComposableTopDown.abi.filter(f => f.name === 'transferChild' && f.inputs.length === 4)[0];
     const transferMethodTransactionData = web3Abi.encodeFunctionCall(
-      safeTransferChild, [composable.address, sampleNFT.address, 2, bytes1]
+      transferChild, [composable.address, sampleNFT.address, 2, bytes1]
     );
     const tx = await web3.eth.sendTransaction({
       from: alice, to: composable.address, data: transferMethodTransactionData, value: 0, gas: 500000
     });
+<<<<<<< HEAD:test/composable.js
     assert(tx, 'tx undefined using safeTransferChild');
   });
+=======
+    assert(tx, 'tx undefined using transferChild');
+    });
+>>>>>>> 4d7646f72f95d440646c10ba10b3a79257a8c82c:test/composabletopdown.js
 
   it('should have sampleNFT contract', async () => {
     const contract = await composable.childContractByIndex.call(1,0);
@@ -364,7 +381,7 @@ contract('Composable', function(accounts) {
     //const success = await composable.safeTransferFTP.call(bob, 3, sampleERC20.address, 250, bytes1);
     //assert(success, 'did not transfer ERC20 from composable');
     //const tx = await composable.safeTransferFTP(bob, 3, sampleERC20.address, 250, bytes1);
-    const transfer = Composable.abi.filter(f => f.name === 'transferERC223' && f.inputs.length === 4)[0];
+    const transfer = ComposableTopDown.abi.filter(f => f.name === 'transferERC223' && f.inputs.length === 4)[0];
     const transferMethodTransactionData = web3Abi.encodeFunctionCall(
       transfer, [3, bob, sampleERC20.address, 250]
     );

@@ -7,27 +7,25 @@ pragma solidity ^0.4.24;
 import "zeppelin-solidity/contracts/token/ERC721/ERC721Token.sol";
 import "zeppelin-solidity/contracts/AddressUtils.sol";
 
-interface ERC998ERC721 {
+interface ERC998ERC721TopDown {
   event ReceivedChild(address indexed _from, uint256 indexed _tokenId, address indexed _childContract, uint256 _childTokenId);
   event TransferChild(uint256 indexed tokenId, address indexed _to, address indexed _childContract, uint256 _childTokenId);
 
   function ownerOfChild(address _childContract, uint256 _childTokenId) external view returns (uint256 tokenId);
-  function onERC721Received(address _operator, address _from, uint256 _childTokenId, bytes _data) external returns(bytes4);
+  function onERC721Received(address _from, uint256 _childTokenId, bytes _data) external returns(bytes4);
   function transferChild(address _to, address _childContract, uint256 _childTokenId) external;
-  function safeTransferChild(address _to, address _childContract, uint256 _childTokenId) external;
-  function safeTransferChild(address _to, address _childContract, uint256 _childTokenId, bytes _data) external;
+  function transferChild(address _to, address _childContract, uint256 _childTokenId, bytes _data) external;
   function isApprovedOrOwnerOf(address _sender, address childContract, uint256 _childTokenId) public view returns (bool);
-  function getChild(address _from, uint256 _tokenId, address _childContract, uint256 _childTokenId) external;
 }
 
-interface ERC998ERC721Enumerable {
+interface ERC998ERC721TopDownEnumerable {
   function totalChildContracts(uint256 _tokenId) external view returns(uint256);
   function childContractByIndex(uint256 _tokenId, uint256 _index) external view returns (address childContract);
   function totalChildTokens(uint256 _tokenId, address _childContract) external view returns(uint256);
   function childTokenByIndex(uint256 _tokenId, address _childContract, uint256 _index) external view returns (uint256 childTokenId);
 }
 
-interface ERC998ERC223 {
+interface ERC998ERC223TopDown {
   event ReceivedERC223(address indexed _from, uint256 indexed _tokenId, address indexed _erc223Contract, uint256 _value);
   event TransferERC223(uint256 indexed _tokenId, address indexed _to, address indexed _erc223Contract, uint256 _value);
 
@@ -39,20 +37,21 @@ interface ERC998ERC223 {
 
 }
 
-interface ERC998ERC223Enumerable {
+interface ERC998ERC223TopDownEnumerable {
   function totalERC223Contracts(uint256 _tokenId) external view returns(uint256);
   function erc223ContractByIndex(uint256 _tokenId, uint256 _index) external view returns(address);
 }
 
 interface ERC20AndERC223TransferFunctions {
-  function transferFrom(address _from, address _to, uint _value) returns (bool success);
+  function transferFrom(address _from, address _to, uint _value) public returns (bool success);
   function transfer(address to, uint value) public returns (bool success);
   function transfer(address to, uint value, bytes data) public returns (bool success);
 }
 
-contract Composable is ERC721Token, ERC998ERC721, ERC998ERC721Enumerable, ERC998ERC223, ERC998ERC223Enumerable {
+contract ComposableTopDown is ERC721Token, ERC998ERC721TopDown, ERC998ERC721TopDownEnumerable,
+                                     ERC998ERC223TopDown, ERC998ERC223TopDownEnumerable {
 
-  // pass through constructor, remove?
+
   constructor(string _name, string _symbol) public ERC721Token(_name, _symbol) {}
 
   // wrapper on minting new 721
@@ -61,7 +60,10 @@ contract Composable is ERC721Token, ERC998ERC721, ERC998ERC721Enumerable, ERC998
     return allTokens.length;
   }
   //from zepellin ERC721Receiver.sol
+  //old version
   bytes4 constant ERC721_RECEIVED = 0xf0b9e5ba;
+  //new version
+
 
   ////////////////////////////////////////////////////////
   // ERC998ERC721 and ERC998ERC721Enumerable implementation
@@ -82,27 +84,27 @@ contract Composable is ERC721Token, ERC998ERC721, ERC998ERC721Enumerable, ERC998
   // child address => childId => tokenId
   mapping(address => mapping(uint256 => uint256)) internal childTokenOwner;
 
-  function isApprovedOrOwnerOf(address _sender, address childContract, uint256 _childTokenId) public view returns (bool) {
-    uint256 tokenId = ownerOfChild(childContract,_childTokenId);
+  // use staticcall opcode to enforce no state changes in external call
+  // using staticcall prevents reentrance attacks
+  function staticCall(address theContract, bytes calldata) internal view returns (bool callSuccess, bytes32 result) {
+    assembly {
+      callSuccess := staticcall(gas, theContract, add(calldata, 0x20), mload(calldata), calldata, 0x20)
+      result := mload(calldata)
+    }
+    return (callSuccess, result);
+  }
+
+  function isApprovedOrOwnerOf(address _sender, address _childContract, uint256 _childTokenId) public view returns (bool) {
+    uint256 tokenId = ownerOfChild(_childContract,_childTokenId);
     address owner = ownerOf(tokenId);
       if(_sender == owner || _sender == getApproved(tokenId) || isApprovedForAll(owner, _sender)) {
       return true;
     }
-    address ownerUpOneLevel = ownerOf(tokenId);
-    // use staticcall opcode to enforce no state changes in external call
-    // using staticcall prevents reentrance attacks
-    bool callSuccess;
-    bool result;
     bytes memory calldata = abi.encodeWithSelector(/* isApprovedOrOwnerOf */ 0xed9ac0eb, _sender, this, tokenId);
-    assembly {
-      callSuccess := staticcall(gas, ownerUpOneLevel, add(calldata, 0x20), mload(calldata), calldata, 0x20)
-      result := mload(calldata)
-    }
-    require(callSuccess, "isApprovedOrOwnerOf call failed");
-    return result;
-    //return ERC998ERC721(ownerUpOneLevel).isApprovedOrOwnerOf(_sender, this, tokenId);
+    (bool success, bytes32 result) = staticCall(ownerOf(tokenId), calldata);
+    require(success, "isApprovedOrOwnerOf static call failed");
+    return uint256(result) == 0x01;
   }
-
 
   function removeChild(uint256 _tokenId, address _childContract, uint256 _childTokenId) private {
     uint256 tokenIndex = childTokenIndex[_tokenId][_childContract][_childTokenId];
@@ -129,7 +131,7 @@ contract Composable is ERC721Token, ERC998ERC721, ERC998ERC721Enumerable, ERC998
     }
   }
 
-  function safeTransferChild(address _to, address _childContract, uint256 _childTokenId) external {
+  function transferChild(address _to, address _childContract, uint256 _childTokenId) external {
     uint256 tokenId = ownerOfChild(_childContract, _childTokenId);
     require(isApprovedOrOwnerOf(msg.sender, _childContract, _childTokenId));
     removeChild(tokenId, _childContract, _childTokenId);
@@ -137,7 +139,7 @@ contract Composable is ERC721Token, ERC998ERC721, ERC998ERC721Enumerable, ERC998
     emit TransferChild(tokenId, _to, _childContract, _childTokenId);
   }
 
-  function safeTransferChild(address _to, address _childContract, uint256 _childTokenId, bytes _data) external {
+  function transferChild(address _to, address _childContract, uint256 _childTokenId, bytes _data) external {
     uint256 tokenId = ownerOfChild(_childContract, _childTokenId);
     require(isApprovedOrOwnerOf(msg.sender, _childContract, _childTokenId));
     removeChild(tokenId, _childContract, _childTokenId);
@@ -145,19 +147,7 @@ contract Composable is ERC721Token, ERC998ERC721, ERC998ERC721Enumerable, ERC998
     emit TransferChild(tokenId, _to, _childContract, _childTokenId);
   }
 
-  function transferChild(address _to, address _childContract, uint256 _childTokenId) external {
-    uint256 tokenId = ownerOfChild(_childContract, _childTokenId);
-    require(isApprovedOrOwnerOf(msg.sender, _childContract, _childTokenId));
-    removeChild(tokenId, _childContract, _childTokenId);
-    //this is here to be compatible with cryptokitties and other old contracts that require being owner and approved
-    // before transferring.
-    //does not work with current standard which does not allow approving self, so we must let it fail in that case.
-    _childContract.call(/* approve(address,uint256) */ 0x095ea7b3, this, _childTokenId);
-    ERC721Basic(_childContract).transferFrom(this, _to, _childTokenId);
-    emit TransferChild(tokenId, _to, _childContract, _childTokenId);
-  }
-
-  function onERC721Received(address _operator, address _from, uint256 _childTokenId, bytes _data) external returns(bytes4) {
+  function onERC721Received(address _from, uint256 _childTokenId, bytes _data) external returns(bytes4) {
     require(_data.length > 0, "_data must contain the uint256 tokenId to transfer the child token to.");
     /**************************************
     * TODO move to library
@@ -165,7 +155,9 @@ contract Composable is ERC721Token, ERC998ERC721, ERC998ERC721Enumerable, ERC998
     // convert up to 32 bytes of_data to uint256, owner nft tokenId passed as uint in bytes
     uint256 tokenId;
     assembly {
-      tokenId := calldataload(164)
+      // new onERC721Received
+      //tokenId := calldataload(164)
+      tokenId := calldataload(132)
     }
     if(_data.length < 32) {
       tokenId = tokenId >> 256 - _data.length * 8;
@@ -191,12 +183,10 @@ contract Composable is ERC721Token, ERC998ERC721, ERC998ERC721Enumerable, ERC998
     childTokenIndex[_tokenId][_childContract][_childTokenId] = childTokensLength + 1;
     childTokenOwner[_childContract][_childTokenId] = _tokenId;
     emit ReceivedChild(_from, _tokenId, _childContract, _childTokenId);
-  }
 
-  // this contract has to be approved first by _childContract
-  function getChild(address _from, uint256 _tokenId, address _childContract, uint256 _childTokenId) external {
-    receiveChild(_from, _tokenId, _childContract, _childTokenId);
-    ERC721Basic(_childContract).transferFrom(_from, this, _childTokenId);
+
+
+
   }
 
   function ownerOfChild(address _childContract, uint256 _childTokenId) public view returns (uint256 tokenId) {
