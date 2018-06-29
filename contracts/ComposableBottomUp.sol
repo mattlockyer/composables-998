@@ -12,7 +12,7 @@ interface ERC998ERC721BottomUp {
   * The tokenOwner address can be either a user address or an ERC721 contract address.
   * If the tokenOwner address is a user address then parentTokenId will be 0 and should not be used or considered.
   * If tokenOwner address is a user address then isChild is false, otherwise isChild is true, which means that
-  * _tokenId is a child of tokenOwner and parentTokenId.
+  * tokenOwner is an ERC721 contract address and _tokenId is a child of tokenOwner and parentTokenId.
   */
   function tokenOwnerOf(uint256 _tokenId) external view returns (address tokenOwner, uint256 parentTokenId, bool isChild);
   /**
