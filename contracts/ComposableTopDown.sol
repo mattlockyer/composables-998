@@ -14,8 +14,10 @@ interface ERC998ERC721TopDown {
   function ownerOfChild(address _childContract, uint256 _childTokenId) external view returns (uint256 tokenId);
   function onERC721Received(address _from, uint256 _childTokenId, bytes _data) external returns(bytes4);
   function transferChild(address _to, address _childContract, uint256 _childTokenId) external;
-  function transferChild(address _to, address _childContract, uint256 _childTokenId, bytes _data) external;
+  function safeTransferChild(address _to, address _childContract, uint256 _childTokenId) external;
+  function safeTransferChild(address _to, address _childContract, uint256 _childTokenId, bytes _data) external;
   function isApprovedOrOwnerOf(address _sender, address childContract, uint256 _childTokenId) public view returns (bool);
+  function getChild(address _from, uint256 _tokenId, address _childContract, uint256 _childTokenId) external;
 }
 
 interface ERC998ERC721TopDownEnumerable {
@@ -131,7 +133,7 @@ contract ComposableTopDown is ERC721Token, ERC998ERC721TopDown, ERC998ERC721TopD
     }
   }
 
-  function transferChild(address _to, address _childContract, uint256 _childTokenId) external {
+  function safeTransferChild(address _to, address _childContract, uint256 _childTokenId) external {
     uint256 tokenId = ownerOfChild(_childContract, _childTokenId);
     require(isApprovedOrOwnerOf(msg.sender, _childContract, _childTokenId));
     removeChild(tokenId, _childContract, _childTokenId);
@@ -139,13 +141,37 @@ contract ComposableTopDown is ERC721Token, ERC998ERC721TopDown, ERC998ERC721TopD
     emit TransferChild(tokenId, _to, _childContract, _childTokenId);
   }
 
-  function transferChild(address _to, address _childContract, uint256 _childTokenId, bytes _data) external {
+  function safeTransferChild(address _to, address _childContract, uint256 _childTokenId, bytes _data) external {
     uint256 tokenId = ownerOfChild(_childContract, _childTokenId);
     require(isApprovedOrOwnerOf(msg.sender, _childContract, _childTokenId));
     removeChild(tokenId, _childContract, _childTokenId);
     ERC721Basic(_childContract).safeTransferFrom(this, _to, _childTokenId, _data);
     emit TransferChild(tokenId, _to, _childContract, _childTokenId);
   }
+
+  function transferChild(address _to, address _childContract, uint256 _childTokenId) external {
+    uint256 tokenId = ownerOfChild(_childContract, _childTokenId);
+    require(isApprovedOrOwnerOf(msg.sender, _childContract, _childTokenId));
+    removeChild(tokenId, _childContract, _childTokenId);
+    //this is here to be compatible with cryptokitties and other old contracts that require being owner and approved
+    // before transferring.
+    //does not work with current standard which does not allow approving self, so we must let it fail in that case.
+    _childContract.call(/* approve(address,uint256) */ 0x095ea7b3, this, _childTokenId);
+    ERC721Basic(_childContract).transferFrom(this, _to, _childTokenId);
+    emit TransferChild(tokenId, _to, _childContract, _childTokenId);
+  }
+
+  // this contract has to be approved first by _childContract
+  function getChild(address _from, uint256 _tokenId, address _childContract, uint256 _childTokenId) external {
+    address childTokenOwnerAddress = ERC721Basic(_childContract).ownerOf(_childTokenId);
+    require(childTokenOwnerAddress == msg.sender ||
+      ERC721Basic(_childContract).getApproved(_tokenId) == msg.sender ||
+      ERC721Basic(_childContract).isApprovedForAll(childTokenOwnerAddress, msg.sender));
+    receiveChild(_from, _tokenId, _childContract, _childTokenId);
+    ERC721Basic(_childContract).transferFrom(_from, this, _childTokenId);
+  }
+
+
 
   function onERC721Received(address _from, uint256 _childTokenId, bytes _data) external returns(bytes4) {
     require(_data.length > 0, "_data must contain the uint256 tokenId to transfer the child token to.");
