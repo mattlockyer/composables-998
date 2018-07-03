@@ -36,6 +36,7 @@ interface ERC998ERC223TopDown {
   function transferERC223(uint256 _tokenId, address _to, address _erc223Contract, uint256 _value) external;
   function transferERC223(uint256 _tokenId, address _to, address _erc223Contract, uint256 _value, bytes _data) external;
   function transferFromERC20(address _from, uint256 _tokenId, address _erc223Contract, uint256 _value) external;
+  function isApprovedOrOwnerOf(address _sender, address childContract, uint256 _childTokenId) public view returns (bool);
 
 }
 
@@ -97,15 +98,26 @@ contract ComposableTopDown is ERC721Token, ERC998ERC721TopDown, ERC998ERC721TopD
   }
 
   function isApprovedOrOwnerOf(address _sender, address _childContract, uint256 _childTokenId) public view returns (bool) {
-    uint256 tokenId = ownerOfChild(_childContract,_childTokenId);
-    address owner = ownerOf(tokenId);
-      if(_sender == owner || _sender == getApproved(tokenId) || isApprovedForAll(owner, _sender)) {
+    uint256 tokenId;
+    if(_childContract == address(0)) {
+      tokenId = _childTokenId;
+    }
+    else {
+      tokenId = ownerOfChild(_childContract,_childTokenId);
+    }
+    address towner = ownerOf(tokenId);
+    if(_sender == towner || _sender == getApproved(tokenId) || isApprovedForAll(towner, _sender)) {
       return true;
     }
-    bytes memory calldata = abi.encodeWithSelector(/* isApprovedOrOwnerOf */ 0xed9ac0eb, _sender, this, tokenId);
-    (bool success, bytes32 result) = staticCall(ownerOf(tokenId), calldata);
-    require(success, "isApprovedOrOwnerOf static call failed");
-    return uint256(result) == 0x01;
+    if(towner == address(this)) {
+      return isApprovedOrOwnerOf(_sender, this, tokenId);
+    }
+    else {
+      bytes memory calldata = abi.encodeWithSelector(/* isApprovedOrOwnerOf */ 0xed9ac0eb, _sender, this, tokenId);
+      (bool success, bytes32 result) = staticCall(towner, calldata);
+      require(success, "isApprovedOrOwnerOf static call failed");
+      return uint256(result) == 0x01;
+    }
   }
 
   function removeChild(uint256 _tokenId, address _childContract, uint256 _childTokenId) private {
@@ -115,19 +127,23 @@ contract ComposableTopDown is ERC721Token, ERC998ERC721TopDown, ERC998ERC721TopD
     // remove child token
     uint256 lastTokenIndex = childTokens[_tokenId][_childContract].length-1;
     uint256 lastToken = childTokens[_tokenId][_childContract][lastTokenIndex];
-    childTokens[_tokenId][_childContract][tokenIndex-1] = lastToken;
-    childTokenIndex[_tokenId][_childContract][lastToken] = tokenIndex;
+    if(_childTokenId == lastToken) {
+      childTokens[_tokenId][_childContract][tokenIndex-1] = lastToken;
+      childTokenIndex[_tokenId][_childContract][lastToken] = tokenIndex;
+    }
     childTokens[_tokenId][_childContract].length--;
     delete childTokenIndex[_tokenId][_childContract][_childTokenId];
     delete childTokenOwner[_childContract][_childTokenId];
 
     // remove contract
     if(lastTokenIndex == 0) {
-      uint256 contractIndex = childContractIndex[_tokenId][_childContract];
       uint256 lastContractIndex = childContracts[_tokenId].length - 1;
       address lastContract = childContracts[_tokenId][lastContractIndex];
-      childContracts[_tokenId][contractIndex] = lastContract;
-      childContractIndex[_tokenId][lastContract] = contractIndex;
+      if(_childContract != lastContract) {
+        uint256 contractIndex = childContractIndex[_tokenId][_childContract];
+        childContracts[_tokenId][contractIndex] = lastContract;
+        childContractIndex[_tokenId][lastContract] = contractIndex;
+      }
       childContracts[_tokenId].length--;
       delete childContractIndex[_tokenId][_childContract];
     }
@@ -135,7 +151,7 @@ contract ComposableTopDown is ERC721Token, ERC998ERC721TopDown, ERC998ERC721TopD
 
   function safeTransferChild(address _to, address _childContract, uint256 _childTokenId) external {
     uint256 tokenId = ownerOfChild(_childContract, _childTokenId);
-    require(isApprovedOrOwnerOf(msg.sender, _childContract, _childTokenId));
+    require(isApprovedOrOwnerOf(msg.sender, address(0), tokenId));
     removeChild(tokenId, _childContract, _childTokenId);
     ERC721Basic(_childContract).safeTransferFrom(this, _to, _childTokenId);
     emit TransferChild(tokenId, _to, _childContract, _childTokenId);
@@ -143,7 +159,7 @@ contract ComposableTopDown is ERC721Token, ERC998ERC721TopDown, ERC998ERC721TopD
 
   function safeTransferChild(address _to, address _childContract, uint256 _childTokenId, bytes _data) external {
     uint256 tokenId = ownerOfChild(_childContract, _childTokenId);
-    require(isApprovedOrOwnerOf(msg.sender, _childContract, _childTokenId));
+    require(isApprovedOrOwnerOf(msg.sender, address(0), tokenId));
     removeChild(tokenId, _childContract, _childTokenId);
     ERC721Basic(_childContract).safeTransferFrom(this, _to, _childTokenId, _data);
     emit TransferChild(tokenId, _to, _childContract, _childTokenId);
@@ -151,7 +167,7 @@ contract ComposableTopDown is ERC721Token, ERC998ERC721TopDown, ERC998ERC721TopD
 
   function transferChild(address _to, address _childContract, uint256 _childTokenId) external {
     uint256 tokenId = ownerOfChild(_childContract, _childTokenId);
-    require(isApprovedOrOwnerOf(msg.sender, _childContract, _childTokenId));
+    require(isApprovedOrOwnerOf(msg.sender, address(0), tokenId));
     removeChild(tokenId, _childContract, _childTokenId);
     //this is here to be compatible with cryptokitties and other old contracts that require being owner and approved
     // before transferring.
@@ -163,11 +179,11 @@ contract ComposableTopDown is ERC721Token, ERC998ERC721TopDown, ERC998ERC721TopD
 
   // this contract has to be approved first by _childContract
   function getChild(address _from, uint256 _tokenId, address _childContract, uint256 _childTokenId) external {
+    receiveChild(_from, _tokenId, _childContract, _childTokenId);
     address childTokenOwnerAddress = ERC721Basic(_childContract).ownerOf(_childTokenId);
     require(childTokenOwnerAddress == msg.sender ||
       ERC721Basic(_childContract).getApproved(_tokenId) == msg.sender ||
       ERC721Basic(_childContract).isApprovedForAll(childTokenOwnerAddress, msg.sender));
-    receiveChild(_from, _tokenId, _childContract, _childTokenId);
     ERC721Basic(_childContract).transferFrom(_from, this, _childTokenId);
   }
 
@@ -175,6 +191,7 @@ contract ComposableTopDown is ERC721Token, ERC998ERC721TopDown, ERC998ERC721TopD
 
   function onERC721Received(address _from, uint256 _childTokenId, bytes _data) external returns(bytes4) {
     require(_data.length > 0, "_data must contain the uint256 tokenId to transfer the child token to.");
+    require(msg.sender.isContract(), "msg.sender is not a contract.");
     /**************************************
     * TODO move to library
     **************************************/
@@ -272,11 +289,13 @@ contract ComposableTopDown is ERC721Token, ERC998ERC721TopDown, ERC998ERC721TopD
     uint256 newERC223Balance = erc223Balance - _value;
     erc223Balances[_tokenId][_erc223Contract] = newERC223Balance;
     if(newERC223Balance == 0) {
-      uint256 contractIndex = erc223ContractIndex[_tokenId][_erc223Contract];
       uint256 lastContractIndex = erc223Contracts[_tokenId].length - 1;
       address lastContract = erc223Contracts[_tokenId][lastContractIndex];
-      erc223Contracts[_tokenId][contractIndex] = lastContract;
-      erc223ContractIndex[_tokenId][lastContract] = contractIndex;
+      if(_erc223Contract != lastContract) {
+        uint256 contractIndex = erc223ContractIndex[_tokenId][_erc223Contract];
+        erc223Contracts[_tokenId][contractIndex] = lastContract;
+        erc223ContractIndex[_tokenId][lastContract] = contractIndex;
+      }
       erc223Contracts[_tokenId].length--;
       delete erc223ContractIndex[_tokenId][_erc223Contract];
     }
@@ -284,7 +303,7 @@ contract ComposableTopDown is ERC721Token, ERC998ERC721TopDown, ERC998ERC721TopD
   
   
   function transferERC223(uint256 _tokenId, address _to, address _erc223Contract, uint256 _value) external {
-    require(isApprovedOrOwner(msg.sender, _tokenId));
+    require(isApprovedOrOwnerOf(msg.sender, address(0),_tokenId));
     removeERC223(_tokenId, _erc223Contract, _value);
     require(ERC20AndERC223TransferFunctions(_erc223Contract).transfer(_to, _value), "ERC20 transfer failed.");
     emit TransferERC223(_tokenId, _to, _erc223Contract, _value);
@@ -292,7 +311,7 @@ contract ComposableTopDown is ERC721Token, ERC998ERC721TopDown, ERC998ERC721TopD
   
   // implementation of ERC 223
   function transferERC223(uint256 _tokenId, address _to, address _erc223Contract, uint256 _value, bytes _data) external {
-    require(isApprovedOrOwner(msg.sender, _tokenId));
+    require(isApprovedOrOwnerOf(msg.sender, address(0), _tokenId));
     require(erc223Balances[_tokenId][_erc223Contract] >= _value, "Not enough token available to transfer.");
     erc223Received(this, _tokenId, _erc223Contract, _value);
     require(ERC20AndERC223TransferFunctions(_erc223Contract).transfer(_to, _value, _data), "ERC223 transfer failed.");
@@ -301,7 +320,6 @@ contract ComposableTopDown is ERC721Token, ERC998ERC721TopDown, ERC998ERC721TopD
   
   function erc223Received(address _from, uint256 _tokenId, address _erc223Contract, uint256 _value) private {
     require(exists(_tokenId), "tokenId does not exist.");
-    require(_erc223Contract.isContract(), "Supplied token contract is not a contract");
     if(_value == 0) {
       return;
     }
@@ -317,6 +335,7 @@ contract ComposableTopDown is ERC721Token, ERC998ERC721TopDown, ERC998ERC721TopD
   // used by ERC 223
   function tokenFallback(address _from, uint256 _value, bytes _data) external {
     require(_data.length > 0, "_data must contain the uint256 tokenId to transfer the token to.");
+    require(msg.sender.isContract(), "msg.sender is not a contract");
     /**************************************
     * TODO move to library
     **************************************/
@@ -334,6 +353,7 @@ contract ComposableTopDown is ERC721Token, ERC998ERC721TopDown, ERC998ERC721TopD
   
   // this contract has to be approved first by _erc223Contract
   function transferFromERC20(address _from, uint256 _tokenId, address _erc223Contract, uint256 _value) external {
+    require(isApprovedOrOwnerOf(msg.sender, address(0), _tokenId));
     erc223Received(_from, _tokenId, _erc223Contract, _value);
     require(ERC20AndERC223TransferFunctions(_erc223Contract).transferFrom(_from, this, _value), "ERC20 transfer failed.");
   }
