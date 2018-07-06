@@ -36,9 +36,9 @@ interface ERC998ERC721TopDownEnumerable {
   function childTokenByIndex(uint256 _tokenId, address _childContract, uint256 _index) external view returns (uint256 childTokenId);
 }
 
-interface ERC998ERC223TopDown {
-  event ReceivedERC223(address indexed _from, uint256 indexed _tokenId, address indexed _erc223Contract, uint256 _value);
-  event TransferERC223(uint256 indexed _tokenId, address indexed _to, address indexed _erc223Contract, uint256 _value);
+interface ERC998ERC20TopDown {
+  event ReceivedERC20(address indexed _from, uint256 indexed _tokenId, address indexed _erc223Contract, uint256 _value);
+  event TransferERC20(uint256 indexed _tokenId, address indexed _to, address indexed _erc223Contract, uint256 _value);
 
   function tokenOwnerOf(uint256 _tokenId) external view returns (address tokenOwner, uint256 parentTokenId, uint256 isParent);
   function tokenFallback(address _from, uint256 _value, bytes _data) external;
@@ -49,9 +49,9 @@ interface ERC998ERC223TopDown {
 
 }
 
-interface ERC998ERC223TopDownEnumerable {
-  function totalERC223Contracts(uint256 _tokenId) external view returns(uint256);
-  function erc223ContractByIndex(uint256 _tokenId, uint256 _index) external view returns(address);
+interface ERC998ERC20TopDownEnumerable {
+  function totalERC20Contracts(uint256 _tokenId) external view returns(uint256);
+  function erc20ContractByIndex(uint256 _tokenId, uint256 _index) external view returns(address);
 }
 
 interface ERC20AndERC223 {
@@ -62,7 +62,7 @@ interface ERC20AndERC223 {
 }
 
 contract ComposableTopDown is ERC721, ERC998ERC721TopDown, ERC998ERC721TopDownEnumerable,
-                                     ERC998ERC223TopDown, ERC998ERC223TopDownEnumerable {
+                                     ERC998ERC20TopDown, ERC998ERC20TopDownEnumerable {
   // tokenOwnerOf.selector;
   uint256 constant TOKEN_OWNER_OF = 0x89885a59;
   uint256 constant OWNER_OF_CHILD = 0xeadb80b8;
@@ -530,7 +530,7 @@ contract ComposableTopDown is ERC721, ERC998ERC721TopDown, ERC998ERC721TopDownEn
       tokenOwner == msg.sender || tokenOwnerToOperators[tokenOwner][msg.sender]);
     removeERC223(_tokenId, _erc223Contract, _value);
     require(ERC20AndERC223(_erc223Contract).transfer(_to, _value), "ERC20 transfer failed.");
-    emit TransferERC223(_tokenId, _to, _erc223Contract, _value);
+    emit TransferERC20(_tokenId, _to, _erc223Contract, _value);
   }
   
   // implementation of ERC 223
@@ -543,7 +543,7 @@ contract ComposableTopDown is ERC721, ERC998ERC721TopDown, ERC998ERC721TopDownEn
       tokenOwner == msg.sender || tokenOwnerToOperators[tokenOwner][msg.sender]);
     removeERC223(_tokenId, _erc223Contract, _value);
     require(ERC20AndERC223(_erc223Contract).transfer(_to, _value, _data), "ERC223 transfer failed.");
-    emit TransferERC223(_tokenId, _to, _erc223Contract, _value);
+    emit TransferERC20(_tokenId, _to, _erc223Contract, _value);
   }
 
   // this contract has to be approved first by _erc223Contract
@@ -580,7 +580,7 @@ contract ComposableTopDown is ERC721, ERC998ERC721TopDown, ERC998ERC721TopDownEn
       erc223Contracts[_tokenId].push(_erc223Contract);
     }
     erc223Balances[_tokenId][_erc223Contract] += _value;
-    emit ReceivedERC223(_from, _tokenId, _erc223Contract, _value);
+    emit ReceivedERC20(_from, _tokenId, _erc223Contract, _value);
   }
   
   // used by ERC 223
@@ -604,12 +604,12 @@ contract ComposableTopDown is ERC721, ERC998ERC721TopDown, ERC998ERC721TopDownEn
   
 
   
-  function erc223ContractByIndex(uint256 _tokenId, uint256 _index) external view returns(address) {
+  function erc20ContractByIndex(uint256 _tokenId, uint256 _index) external view returns(address) {
     require(_index < erc223Contracts[_tokenId].length, "Contract address does not exist for this token and index.");
     return erc223Contracts[_tokenId][_index];
   }
   
-  function totalERC223Contracts(uint256 _tokenId) external view returns(uint256) {
+  function totalERC20Contracts(uint256 _tokenId) external view returns(uint256) {
     return erc223Contracts[_tokenId].length;
   }
   

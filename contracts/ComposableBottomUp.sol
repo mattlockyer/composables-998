@@ -27,10 +27,6 @@ interface ERC998ERC721BottomUp {
 }
 
 interface ERC998ERC721BottomUpNotifications {
-  function onERC998ReceivedChild(address _operator, address _fromContract, uint256 _fromTokenId, uint256 _toTokenId, uint256 _tokenId, bytes _data) external;
-  function onERC998ReceivedChild(address _operator, address _from, uint256 _toTokenId, uint256 _tokenId, bytes _data) external;
-  function onERC998RemovedChild(address _operator, uint256 _fromTokenId, address _to, uint256 _tokenId, bytes _data) external;
-  function onERC998RemovedChild(address _operator, uint256 _fromTokenId, address _toContract, uint256 _toTokenId, uint256 _tokenId, bytes _data) external;
   function onERC998RemovedChild(address _operator, address _toContract, uint256 _tokenId, bytes _data) external;
 }
 
