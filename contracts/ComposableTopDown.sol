@@ -140,15 +140,14 @@ contract ComposableTopDown is ERC721, ERC998ERC721TopDown, ERC998ERC721TopDownEn
   function ownerOf(uint256 _tokenId) public view returns (address rootOwner) {
     rootOwner = tokenIdToTokenOwner[_tokenId];
     require(rootOwner != address(0));
-    uint256 parentTokenId;
     uint256 isParent = 1;
     bool callSuccess;
     bytes memory calldata;
     while(uint8(isParent) > 0) {
       if(rootOwner == address(this)) {
-        (parentTokenId, isParent) = ownerOfChild(address(this), _tokenId);
+        (_tokenId, isParent) = ownerOfChild(address(this), _tokenId);
         if(uint8(isParent) > 0) {
-          rootOwner = tokenIdToTokenOwner[parentTokenId];
+          rootOwner = tokenIdToTokenOwner[_tokenId];
         }
       }
       else {
@@ -159,7 +158,7 @@ contract ComposableTopDown is ERC721, ERC998ERC721TopDown, ERC998ERC721TopDownEn
             callSuccess := staticcall(gas, rootOwner, add(calldata, 0x20), mload(calldata), calldata, 0x60)
             if callSuccess {
               rootOwner := mload(calldata)
-              parentTokenId := mload(add(calldata,0x20))
+              _tokenId := mload(add(calldata,0x20))
               isParent := mload(add(calldata,0x40))
             }
           }
