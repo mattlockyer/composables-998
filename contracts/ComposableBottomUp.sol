@@ -105,30 +105,30 @@ contract ComposableBottomUp is ERC721, ERC998ERC721BottomUp, ERC998ERC721BottomU
   function ownerOf(uint256 _tokenId) public view returns (address rootOwner) {
     rootOwner = tokenIdToTokenOwner[_tokenId].tokenOwner;
     require(rootOwner != address(0));
-    uint256 parentTokenId = tokenIdToTokenOwner[_tokenId].parentTokenId;
+    _tokenId = tokenIdToTokenOwner[_tokenId].parentTokenId;
     bool callSuccess;
-    uint256 isParent = parentTokenId;
-    parentTokenId--;
+    uint256 isParent = _tokenId;
+    _tokenId--;
     bytes memory calldata;
     while(uint8(isParent) > 0) {
       if(rootOwner == address(this)) {
-        (rootOwner,parentTokenId,isParent) = tokenOwnerOf(parentTokenId);
+        (rootOwner,_tokenId,isParent) = tokenOwnerOf(_tokenId);
       }
       else {
         //0x89885a59 == "tokenOwnerOf(uint256)"
-        calldata = abi.encodeWithSelector(0x89885a59, parentTokenId);
+        calldata = abi.encodeWithSelector(0x89885a59, _tokenId);
         assembly {
           callSuccess := staticcall(gas, rootOwner, add(calldata, 0x20), mload(calldata), calldata, 0x60)
           if callSuccess {
             rootOwner := mload(calldata)
-            parentTokenId := mload(add(calldata,0x20))
+            _tokenId := mload(add(calldata,0x20))
             isParent := mload(add(calldata,0x40))
           }
         }
 
         if(callSuccess == false || isParent >> 8 != TOKEN_OWNER_OF) {
           //0x6352211e == "ownerOf(uint256)"
-          calldata = abi.encodeWithSelector(0x6352211e, parentTokenId);
+          calldata = abi.encodeWithSelector(0x6352211e, _tokenId);
           assembly {
             callSuccess := staticcall(gas, rootOwner, add(calldata, 0x20), mload(calldata), calldata, 0x20)
             if callSuccess {
