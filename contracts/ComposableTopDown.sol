@@ -407,7 +407,7 @@ contract ComposableTopDown is ERC721, ERC998ERC721TopDown, ERC998ERC721TopDownEn
 
     receiveChild(_from, tokenId, msg.sender, _childTokenId);
     //cause out of gas error if circular ownership
-    ownerOf(_tokenId);
+    ownerOf(tokenId);
     return ERC721_RECEIVED_OLD;
   }
 
@@ -434,7 +434,7 @@ contract ComposableTopDown is ERC721, ERC998ERC721TopDown, ERC998ERC721TopDownEn
 
     receiveChild(_from, tokenId, msg.sender, _childTokenId);
     //cause out of gas error if circular ownership
-    ownerOf(_tokenId);
+    ownerOf(tokenId);
     return ERC721_RECEIVED_NEW;
   }
 
