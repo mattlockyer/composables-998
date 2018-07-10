@@ -27,7 +27,7 @@ interface ERC998ERC721BottomUp {
 }
 
 interface ERC998ERC721BottomUpNotifications {
-  function onERC998RemovedChild(address _operator, address _toContract, uint256 _tokenId, bytes _data) external;
+  function onERC998Removed(address _operator, address _toContract, uint256 _tokenId, bytes _data) external;
 }
 
 interface ERC998ERC721BottomUpEnumerable {
@@ -239,8 +239,6 @@ contract ComposableBottomUp is ERC721, ERC998ERC721BottomUp, ERC998ERC721BottomU
     require(rootOwner == msg.sender || tokenOwnerToOperators[rootOwner][msg.sender] || approvedAddress == msg.sender ||
       tokenOwner == msg.sender || tokenOwnerToOperators[tokenOwner][msg.sender]);
 
-    require(ERC721(_toContract).ownerOf(_toTokenId) != address(0), "_toTokenId does not exist");
-
     // clear approval
     if(approvedAddress != address(0)) {
       delete rootOwnerAndTokenIdToApprovedAddress[rootOwner][_tokenId];
@@ -258,6 +256,8 @@ contract ComposableBottomUp is ERC721, ERC998ERC721BottomUp, ERC998ERC721BottomU
     parentToChildTokenIds[_toContract][_toTokenId].push(_tokenId);
     tokenIdToChildTokenIdsIndex[_tokenId] = index;
 
+    // this also prevents circular token ownership by causing out of gas error
+    require(ERC721(_toContract).ownerOf(_toTokenId) != address(0), "_toTokenId does not exist");
 
     emit Transfer(_from, _toContract, _tokenId);
     emit TransferToParent(_toContract, _toTokenId, _tokenId);
@@ -275,8 +275,6 @@ contract ComposableBottomUp is ERC721, ERC998ERC721BottomUp, ERC998ERC721BottomU
     require(rootOwner == msg.sender || tokenOwnerToOperators[rootOwner][msg.sender] ||
       rootOwnerAndTokenIdToApprovedAddress[rootOwner][_tokenId] == msg.sender ||
       tokenOwner == msg.sender || tokenOwnerToOperators[tokenOwner][msg.sender]);
-
-    require(ERC721(_toContract).ownerOf(_toTokenId) != address(0), "_toTokenId does not exist");
 
     // clear approval
     if(rootOwnerAndTokenIdToApprovedAddress[rootOwner][_tokenId] != address(0)) {
@@ -299,6 +297,9 @@ contract ComposableBottomUp is ERC721, ERC998ERC721BottomUp, ERC998ERC721BottomU
     uint256 index = parentToChildTokenIds[_toContract][_toTokenId].length;
     parentToChildTokenIds[_toContract][_toTokenId].push(_tokenId);
     tokenIdToChildTokenIdsIndex[_tokenId] = index;
+
+    // this also prevents circular token ownership by causing out of gas error
+    require(ERC721(_toContract).ownerOf(_toTokenId) != address(0), "_toTokenId does not exist");
 
     emit Transfer(_fromContract, _toContract, _tokenId);
     emit TransferFromParent(_fromContract, _fromTokenId, _tokenId);
@@ -331,8 +332,8 @@ contract ComposableBottomUp is ERC721, ERC998ERC721BottomUp, ERC998ERC721BottomU
     emit Transfer(_from, _to, _tokenId);
 
     if(isContract(_from)) {
-      //0x792dad14 == "onERC998RemovedChild(address,address,uint256,bytes)"
-      bytes memory calldata = abi.encodeWithSelector(0x792dad14, msg.sender, _to, _tokenId,"");
+      //0x0da719ec == "onERC998Removed(address,address,uint256,bytes)"
+      bytes memory calldata = abi.encodeWithSelector(0x0da719ec, msg.sender, _to, _tokenId,"");
       assembly {
         let success := call(gas, _from, 0, add(calldata, 0x20), mload(calldata), calldata, 0)
       }
