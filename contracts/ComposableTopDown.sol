@@ -8,9 +8,6 @@ import "./ERC721.sol";
 import "./ERC721Receiver.sol";
 import "./SafeMath.sol";
 
-//import "zeppelin-solidity/contracts/token/ERC721/ERC721Token.sol";
-//import "zeppelin-solidity/contracts/AddressUtils.sol";
-
 interface ERC998ERC721TopDown {
   event ReceivedChild(address indexed _from, uint256 indexed _tokenId, address indexed _childContract, uint256 _childTokenId);
   event TransferChild(uint256 indexed tokenId, address indexed _to, address indexed _childContract, uint256 _childTokenId);
@@ -20,7 +17,7 @@ interface ERC998ERC721TopDown {
   function tokenOwnerOf(uint256 _tokenId) external view returns (address tokenOwner, uint256 parentTokenId, uint256 isParent);
   function ownerOfChild(address _childContract, uint256 _childTokenId) external view returns (uint256 parentTokenId, uint256 isParent);
   function onERC721Received(address _operator, address _from, uint256 _childTokenId, bytes _data) external returns(bytes4);
-  function onERC998RemovedChild(address _operator, address _toContract, uint256 _tokenId, bytes _data) external;
+  function onERC998Removed(address _operator, address _toContract, uint256 _childTokenId, bytes _data) external;
   function transferChild(address _to, address _childContract, uint256 _childTokenId) external;
   function safeTransferChild(address _to, address _childContract, uint256 _childTokenId) external;
   function safeTransferChild(address _to, address _childContract, uint256 _childTokenId, bytes _data) external;
@@ -243,8 +240,8 @@ contract ComposableTopDown is ERC721, ERC998ERC721TopDown, ERC998ERC721TopDownEn
     emit Transfer(_from, _to, _tokenId);
 
     if(isContract(_from)) {
-      //0x792dad14 == "onERC998RemovedChild(address,address,uint256,bytes)"
-      bytes memory calldata = abi.encodeWithSelector(0x792dad14, msg.sender, _to, _tokenId,"");
+      //0x0da719ec == "onERC998Removed(address,address,uint256,bytes)"
+      bytes memory calldata = abi.encodeWithSelector(0x0da719ec, msg.sender, _to, _tokenId,"");
       assembly {
         let success := call(gas, _from, 0, add(calldata, 0x20), mload(calldata), calldata, 0)
       }
@@ -321,7 +318,7 @@ contract ComposableTopDown is ERC721, ERC998ERC721TopDown, ERC998ERC721TopDownEn
     }
   }
 
-  function onERC998RemovedChild(address _operator, address _toContract, uint256 _childTokenId, bytes _data) external {
+  function onERC998Removed(address _operator, address _toContract, uint256 _childTokenId, bytes _data) external {
     uint256 tokenId = childTokenOwner[msg.sender][_childTokenId];
     removeChild(tokenId, msg.sender, _childTokenId);
   }
@@ -384,6 +381,8 @@ contract ComposableTopDown is ERC721, ERC998ERC721TopDown, ERC998ERC721TopDownEn
       ERC721(_childContract).isApprovedForAll(_from, msg.sender) ||
       ERC721(_childContract).getApproved(_childTokenId) == msg.sender);
     ERC721(_childContract).transferFrom(_from, this, _childTokenId);
+    //cause out of gas error if circular ownership
+    ownerOf(_tokenId);
   }
 
   function onERC721Received(address _from, uint256 _childTokenId, bytes _data) external returns(bytes4) {
@@ -407,6 +406,8 @@ contract ComposableTopDown is ERC721, ERC998ERC721TopDown, ERC998ERC721TopDownEn
     //require(this == ERC721Basic(msg.sender).ownerOf(_childTokenId), "This contract does not own the child token.");
 
     receiveChild(_from, tokenId, msg.sender, _childTokenId);
+    //cause out of gas error if circular ownership
+    ownerOf(_tokenId);
     return ERC721_RECEIVED_OLD;
   }
 
@@ -432,6 +433,8 @@ contract ComposableTopDown is ERC721, ERC998ERC721TopDown, ERC998ERC721TopDownEn
     //require(this == ERC721Basic(msg.sender).ownerOf(_childTokenId), "This contract does not own the child token.");
 
     receiveChild(_from, tokenId, msg.sender, _childTokenId);
+    //cause out of gas error if circular ownership
+    ownerOf(_tokenId);
     return ERC721_RECEIVED_NEW;
   }
 
