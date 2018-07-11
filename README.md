@@ -36,7 +36,7 @@ Main project manager/coordinator/leader: Matt Lockyer, https://medium.com/@mattd
 
 The current implementation of ERC998 was written by Nick Mudge <nick@perfectabstractions.com>, https://medium.com/@mudgen.
 
-People who contributed:
+People who have helped with the standard and/or implementation:
 * Nathalie Chan King Choy, https://github.com/nathalie-ckc
 * Maciej Górski, https://github.com/mg6maciej
 * Abhishek Chadha, https://medium.com/@abhishekchadha
