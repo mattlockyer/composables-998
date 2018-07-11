@@ -6,9 +6,11 @@ A WIP implementation and documentation repo for the ERC-998 standard extension t
 
 Proposal: https://github.com/ethereum/EIPs/issues/998
 
+Here is a high-level overview of the ERC998 standard: https://medium.com/@mudgen/top-down-and-bottom-up-composables-whats-the-difference-and-which-one-should-you-use-db939f6acf1d
+
 Original Medium Post (code outdated): https://medium.com/coinmonks/introducing-crypto-composables-ee5701fde217
 
-Discord and Discourse community: NFTy Magicians. Search Twitter for a link to join.
+Discord and Discourse community: NFTy Magicians. Search Twitter for a link to join, or use this one: https://discord.gg/uxkHy3
 
 ## Getting Started
 

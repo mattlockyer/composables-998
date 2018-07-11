@@ -1,4 +1,8 @@
-
+/**********************************
+/* Author: Nick Mudge
+/* This implementation was written by Nick Mudge <nick@perfectabstractions.com>, https://medium.com/@mudgen.
+/* Chat with us on Discord in the NFTy Magicians server: https://discord.gg/uxkHy3
+/**********************************/
 
 //jshint ignore: start
 

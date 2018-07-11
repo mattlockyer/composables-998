@@ -1,3 +1,9 @@
+/**********************************
+/* Author: Nick Mudge
+/* This implementation was written by Nick Mudge <nick@perfectabstractions.com>, https://medium.com/@mudgen.
+/* Chat with us on Discord in the NFTy Magicians server: https://discord.gg/uxkHy3
+/**********************************/
+
 pragma solidity ^0.4.24;
 
 import "./ERC721.sol";
