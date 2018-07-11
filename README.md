@@ -12,8 +12,6 @@ Original Medium Post (code outdated): https://medium.com/coinmonks/introducing-c
 
 Discord and Discourse community: NFTy Magicians. Search Twitter for a link to join, or use this one: https://discord.gg/uxkHy3
 
-The current implementation of ERC998 was written by Nick Mudge <nick@perfectabstractions.com>, https://medium.com/@mudgen.
-
 ## Getting Started
 
 Clone the repo and run `npm i` then `truffle test`. You should see a number of tests passing.
@@ -31,3 +29,15 @@ The flexibility of choosing specifically what token type you will need to own an
 ## Questions?
 
 Discord and Discourse community: NFTy Magicians. Search Twitter for a link to join.
+
+## ERC998 Contributors
+
+Main project manager/coordinator/leader: Matt Lockyer, https://medium.com/@mattdlockyer
+
+The current implementation of ERC998 was written by Nick Mudge <nick@perfectabstractions.com>, https://medium.com/@mudgen.
+
+People who contributed:
+* Nathalie Chan King Choy, https://github.com/nathalie-ckc
+* Maciej Górski, https://github.com/mg6maciej
+* Abhishek Chadha, https://medium.com/@abhishekchadha
+
