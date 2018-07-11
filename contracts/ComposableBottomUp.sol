@@ -1,3 +1,7 @@
+/**********************************
+/* Author: Nick Mudge, <nick@perfectabstractions.com>, https://medium.com/@mudgen.
+/**********************************/
+
 pragma solidity ^0.4.24;
 
 import "./ERC721.sol";

@@ -6,9 +6,11 @@ A WIP implementation and documentation repo for the ERC-998 standard extension t
 
 Proposal: https://github.com/ethereum/EIPs/issues/998
 
+Here is a high-level overview of the ERC998 standard: https://medium.com/@mudgen/top-down-and-bottom-up-composables-whats-the-difference-and-which-one-should-you-use-db939f6acf1d
+
 Original Medium Post (code outdated): https://medium.com/coinmonks/introducing-crypto-composables-ee5701fde217
 
-Discord and Discourse community: NFTy Magicians. Search Twitter for a link to join.
+Discord and Discourse community: NFTy Magicians. Search Twitter for a link to join, or use this one: https://discord.gg/uxkHy3
 
 ## Getting Started
 
@@ -27,3 +29,15 @@ The flexibility of choosing specifically what token type you will need to own an
 ## Questions?
 
 Discord and Discourse community: NFTy Magicians. Search Twitter for a link to join.
+
+## ERC998 Contributors
+
+Main project manager/coordinator/leader: Matt Lockyer, https://medium.com/@mattdlockyer
+
+The current implementation of ERC998 was written by Nick Mudge <nick@perfectabstractions.com>, https://medium.com/@mudgen.
+
+People who have helped with the standard and/or implementation:
+* Nathalie Chan King Choy, https://github.com/nathalie-ckc
+* Maciej Górski, https://github.com/mg6maciej
+* Abhishek Chadha, https://medium.com/@abhishekchadha
+

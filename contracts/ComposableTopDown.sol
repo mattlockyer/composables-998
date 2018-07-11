@@ -1,4 +1,6 @@
-
+/**********************************
+/* Author: Nick Mudge, <nick@perfectabstractions.com>, https://medium.com/@mudgen.
+/**********************************/
 
 //jshint ignore: start
 
