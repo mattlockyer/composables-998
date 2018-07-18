@@ -135,7 +135,7 @@ contract('ComposableTopDown', function(accounts) {
       const result = await composable.ownerOfChild(sampleNFT.address, 1);
       //console.log(result);
       //console.log("tokenID:"+tokenId);
-      assert(result[0].equals(1), 'composable parent not found');
+      assert(result[1].equals(1), 'composable parent not found');
     });
 
   /**************************************
@@ -160,8 +160,6 @@ contract('ComposableTopDown', function(accounts) {
   **************************************/
 
   it('should transfer composable to bob', async () => {
-    const success = await composable.transferFrom.call(alice, bob, 1);
-    assert(success, 'transfer did not work');
     const tx = await composable.transferFrom(alice, bob, 1);
   });
 
@@ -295,7 +293,7 @@ contract('ComposableTopDown', function(accounts) {
 
   it('token 1 should own SampleNFT child token 2', async () => {
     const result = await composable.ownerOfChild.call(SampleNFT.address, 2);
-    const tokenId = result[0]
+    const tokenId = result[1]
     //console.log(tokenId);
     assert(tokenId.equals(1), 'SampleNFT child token 2 is not owned by a composable token.');
   });
