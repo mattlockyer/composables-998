@@ -4,24 +4,24 @@
 
 A *WIP (Work-In-Progress)* implementation and documentation repo for the *proposed* ERC-998 standard extension to ERC-721 on the Ethereum blockchain.  The purpose of this repo is to see the theory in action to gather insights and feedback on the *proposed* ERC-998 standard.
 
-Proposal: 
+Proposal: <br/>
 https://github.com/ethereum/EIPs/issues/998
 
-Here is a high-level overview of the *proposed* ERC-998 standard: 
+Here is a high-level overview of the *proposed* ERC-998 standard: <br/>
 https://medium.com/@mudgen/top-down-and-bottom-up-composables-whats-the-difference-and-which-one-should-you-use-db939f6acf1d
 
-Discord and Discourse community: NFTy Magicians. 
-https://discordapp.com/invite/3TtqP2C
+Discord and Discourse community: NFTy Magicians. <br/>
+https://discordapp.com/invite/3TtqP2C <br/>
 https://nftymagicians.org/
 
-Original Medium Post (code outdated): 
+Original Medium Post (code outdated): <br/>
 https://medium.com/coinmonks/introducing-crypto-composables-ee5701fde217
 
-Some follow-on Medium posts describing progress on the project:
-https://hackernoon.com/crypto-composables-erc-998-update-4-the-namening-7a05d28f3401
-https://medium.com/coinmonks/crypto-composables-erc-998-update-3-first-contact-f3930a08636
-https://medium.com/coinmonks/crypto-composables-erc-998-update-2-4b160df79836
-https://medium.com/coinmonks/crypto-composables-erc-998-update-1cc437c13664
+Some follow-on Medium posts describing progress on the project: <br/>
+https://hackernoon.com/crypto-composables-erc-998-update-4-the-namening-7a05d28f3401 <br/>
+https://medium.com/coinmonks/crypto-composables-erc-998-update-3-first-contact-f3930a08636 <br/>
+https://medium.com/coinmonks/crypto-composables-erc-998-update-2-4b160df79836 <br/>
+https://medium.com/coinmonks/crypto-composables-erc-998-update-1cc437c13664 <br/>
 
 ## Getting Started
 
