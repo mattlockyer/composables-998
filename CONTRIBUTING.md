@@ -8,7 +8,7 @@ You can find areas where we need help in the issue list (https://github.com/matt
 
 ## Reporting Bugs/Issues
 
-Please check the composables-998/issues list to see if the bug has been filed already.
+Please check the https://github.com/mattlockyer/composables-998/issues list to see if the bug has been filed already.
 
 If not, please file a github issue there and provide a detailed description of the issue, along with steps to reproduce, and any relevant logs/diagrams/screenshots.
 
@@ -23,4 +23,5 @@ If you are modifying code, please:
 1) Please provide clear log messages for your commits describing what you have changed and the impact.  
 2) Be sure to re-base before submitting your pull request, to ensure there are no merge conflicts.  
 3) Then submit a pull request describing what you are solving and how you solved it.
+
 
