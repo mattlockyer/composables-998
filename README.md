@@ -10,7 +10,7 @@ Here is a high-level overview of the ERC998 standard: https://medium.com/@mudgen
 
 Original Medium Post (code outdated): https://medium.com/coinmonks/introducing-crypto-composables-ee5701fde217
 
-Discord and Discourse community: NFTy Magicians. Search Twitter for a link to join, or use this one: https://discord.gg/uxkHy3
+Discord and Discourse community: NFTy Magicians. Search Twitter for a link to join, or use this one: https://discordapp.com/invite/3TtqP2C
 
 ## Getting Started
 
