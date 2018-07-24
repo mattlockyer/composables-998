@@ -133,8 +133,8 @@ ERC998ERC20TopDown, ERC998ERC20TopDownEnumerable {
 
         bool callSuccess;
         bytes memory calldata;
-        // 0x215952e7 == rootOwnerOfChild(uint256)
-        calldata = abi.encodeWithSelector(0x215952e7, address(this), _childTokenId);
+        // 0xed81cdda == rootOwnerOfChild(address,uint256)
+        calldata = abi.encodeWithSelector(0xed81cdda, address(this), _childTokenId);
         assembly {
             callSuccess := staticcall(gas, rootOwnerAddress, add(calldata, 0x20), mload(calldata), calldata, 0x20)
             if callSuccess {

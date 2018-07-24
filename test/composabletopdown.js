@@ -64,11 +64,11 @@ contract('ComposableTopDown', function(accounts) {
 
   it('should be deployed, Composable', async () => {
 
-    //composable = await Composable.deployed();
+    composable = await  ComposableTopDown.deployed();
 
-    composable = await ComposableTopDown.new("okay", "tkn");
-    const receipt = await web3.eth.getTransactionReceipt(composable.transactionHash);
-    console.log("gas used:" + receipt.gasUsed)
+    //composable = await ComposableTopDown.new("okay", "tkn");
+    //const receipt = await web3.eth.getTransactionReceipt(composable.transactionHash);
+    //console.log("gas used:" + receipt.gasUsed)
 
 
 
