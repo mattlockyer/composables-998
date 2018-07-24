@@ -142,8 +142,8 @@ contract ComposableBottomUp is ERC721, ERC998ERC721BottomUp, ERC998ERC721BottomU
         if (isParent == false) {
 
             // success if this token is owned by a top-down token
-            // 0x215952e7 == rootOwnerOfChild(uint256)
-            calldata = abi.encodeWithSelector(0x215952e7, address(this), _tokenId);
+            // 0xed81cdda == rootOwnerOfChild(address, uint256)
+            calldata = abi.encodeWithSelector(0xed81cdda, address(this), _tokenId);
             assembly {
                 callSuccess := staticcall(gas, rootOwnerAddress, add(calldata, 0x20), mload(calldata), calldata, 0x20)
                 if callSuccess {
@@ -190,8 +190,8 @@ contract ComposableBottomUp is ERC721, ERC998ERC721BottomUp, ERC998ERC721BottomU
                 }
                 require(callSuccess, "Call to ownerOf failed");
 
-                // 0x215952e7 == rootOwnerOfChild(uint256)
-                calldata = abi.encodeWithSelector(0x215952e7, childContract, parentTokenId);
+                // 0xed81cdda == rootOwnerOfChild(address,uint256)
+                calldata = abi.encodeWithSelector(0xed81cdda, childContract, parentTokenId);
                 assembly {
                     callSuccess := staticcall(gas, rootOwnerAddress, add(calldata, 0x20), mload(calldata), calldata, 0x20)
                     if callSuccess {
