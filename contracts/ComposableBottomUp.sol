@@ -271,6 +271,19 @@ contract ComposableBottomUp is ERC721, ERC998ERC721BottomUp, ERC998ERC721BottomU
         parentToChildTokenIds[_fromContract][_fromTokenId].length--;
     }
 
+    function authenticateAndClearApproval(address _tokenOwner, uint256 _tokenId) private {
+        address rootOwner = address(rootOwnerOf(_tokenId));
+        address approvedAddress = rootOwnerAndTokenIdToApprovedAddress[rootOwner][_tokenId];
+        require(rootOwner == msg.sender || tokenOwnerToOperators[rootOwner][msg.sender] || approvedAddress == msg.sender ||
+        _tokenOwner == msg.sender || tokenOwnerToOperators[_tokenOwner][msg.sender]);
+
+        // clear approval
+        if (approvedAddress != address(0)) {
+            delete rootOwnerAndTokenIdToApprovedAddress[rootOwner][_tokenId];
+            emit Approval(rootOwner, address(0), _tokenId);
+        }
+    }
+
     function transferFromParent(address _fromContract, uint256 _fromTokenId, address _to, uint256 _tokenId, bytes _data) external {
         address tokenOwner = tokenIdToTokenOwner[_tokenId].tokenOwner;
         require(tokenOwner == _fromContract);
@@ -278,15 +291,7 @@ contract ComposableBottomUp is ERC721, ERC998ERC721BottomUp, ERC998ERC721BottomU
         uint256 parentTokenId = tokenIdToTokenOwner[_tokenId].parentTokenId;
         require(parentTokenId != 0, "Token does not have a parent token.");
         require(parentTokenId - 1 == _fromTokenId);
-        address rootOwner = address(rootOwnerOf(_tokenId));
-        address approvedAddress = rootOwnerAndTokenIdToApprovedAddress[rootOwner][_tokenId];
-        require(rootOwner == msg.sender || tokenOwnerToOperators[rootOwner][msg.sender] || approvedAddress == msg.sender ||
-        tokenOwner == msg.sender || tokenOwnerToOperators[tokenOwner][msg.sender]);
-
-        // clear approval
-        if (approvedAddress != address(0)) {
-            delete rootOwnerAndTokenIdToApprovedAddress[rootOwner][_tokenId];
-        }
+        authenticateAndClearApproval(tokenOwner, _tokenId);
 
         // remove and transfer token
         if (_fromContract != _to) {
@@ -316,15 +321,7 @@ contract ComposableBottomUp is ERC721, ERC998ERC721BottomUp, ERC998ERC721BottomU
         require(tokenOwner == _from);
         require(_toContract != address(0));
         require(tokenIdToTokenOwner[_tokenId].parentTokenId == 0, "Cannot transfer from address when owned by a token.");
-        address rootOwner = address(rootOwnerOf(_tokenId));
-        address approvedAddress = rootOwnerAndTokenIdToApprovedAddress[rootOwner][_tokenId];
-        require(rootOwner == msg.sender || tokenOwnerToOperators[rootOwner][msg.sender] || approvedAddress == msg.sender ||
-        tokenOwner == msg.sender || tokenOwnerToOperators[tokenOwner][msg.sender]);
-
-        // clear approval
-        if (approvedAddress != address(0)) {
-            delete rootOwnerAndTokenIdToApprovedAddress[rootOwner][_tokenId];
-        }
+        authenticateAndClearApproval(tokenOwner, _tokenId);
 
         // remove and transfer token
         if (_from != _toContract) {
@@ -338,7 +335,12 @@ contract ComposableBottomUp is ERC721, ERC998ERC721BottomUp, ERC998ERC721BottomU
         parentToChildTokenIds[_toContract][_toTokenId].push(_tokenId);
         tokenIdToChildTokenIdsIndex[_tokenId] = index;
 
-        // this also prevents circular token ownership by causing out of gas error
+        //0x0da719ec == "onERC998Removed(address,address,uint256,bytes)"
+        bytes memory calldata = abi.encodeWithSelector(0x0da719ec, msg.sender, _toContract, _tokenId, "");
+        assembly {
+            let success := call(gas, _from, 0, add(calldata, 0x20), mload(calldata), calldata, 0)
+        }
+
         require(ERC721(_toContract).ownerOf(_toTokenId) != address(0), "_toTokenId does not exist");
 
         emit Transfer(_from, _toContract, _tokenId);
@@ -361,6 +363,7 @@ contract ComposableBottomUp is ERC721, ERC998ERC721BottomUp, ERC998ERC721BottomU
         // clear approval
         if (rootOwnerAndTokenIdToApprovedAddress[rootOwner][_tokenId] != address(0)) {
             delete rootOwnerAndTokenIdToApprovedAddress[rootOwner][_tokenId];
+            emit Approval(rootOwner, address(0), _tokenId);
         }
 
         // remove and transfer token
@@ -380,7 +383,6 @@ contract ComposableBottomUp is ERC721, ERC998ERC721BottomUp, ERC998ERC721BottomU
         parentToChildTokenIds[_toContract][_toTokenId].push(_tokenId);
         tokenIdToChildTokenIdsIndex[_tokenId] = index;
 
-        // this also prevents circular token ownership by causing out of gas error
         require(ERC721(_toContract).ownerOf(_toTokenId) != address(0), "_toTokenId does not exist");
 
         emit Transfer(_fromContract, _toContract, _tokenId);
@@ -402,6 +404,7 @@ contract ComposableBottomUp is ERC721, ERC998ERC721BottomUp, ERC998ERC721BottomU
         // clear approval
         if (rootOwnerAndTokenIdToApprovedAddress[rootOwner][_tokenId] != address(0)) {
             delete rootOwnerAndTokenIdToApprovedAddress[rootOwner][_tokenId];
+            emit Approval(rootOwner, address(0), _tokenId);
         }
 
         // remove and transfer token
@@ -413,13 +416,12 @@ contract ComposableBottomUp is ERC721, ERC998ERC721BottomUp, ERC998ERC721BottomU
         }
         emit Transfer(_from, _to, _tokenId);
 
-        if (isContract(_from)) {
-            //0x0da719ec == "onERC998Removed(address,address,uint256,bytes)"
-            bytes memory calldata = abi.encodeWithSelector(0x0da719ec, msg.sender, _to, _tokenId, "");
-            assembly {
-                let success := call(gas, _from, 0, add(calldata, 0x20), mload(calldata), calldata, 0)
-            }
+        //0x0da719ec == "onERC998Removed(address,address,uint256,bytes)"
+        bytes memory calldata = abi.encodeWithSelector(0x0da719ec, msg.sender, _to, _tokenId, "");
+        assembly {
+            let success := call(gas, _from, 0, add(calldata, 0x20), mload(calldata), calldata, 0)
         }
+
     }
 
     function transferFrom(address _from, address _to, uint256 _tokenId) external {
