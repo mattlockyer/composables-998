@@ -10,6 +10,9 @@ https://github.com/ethereum/EIPs/issues/998
 Here is a high-level overview of the *proposed* ERC-998 standard: <br/>
 https://medium.com/@mudgen/top-down-and-bottom-up-composables-whats-the-difference-and-which-one-should-you-use-db939f6acf1d
 
+Draft EIP 998: 
+https://github.com/ethereum/EIPs/blob/master/EIPS/eip-998.md
+
 Discord and Discourse community: NFTy Magicians. <br/>
 https://discordapp.com/invite/3TtqP2C <br/>
 https://nftymagicians.org/
