@@ -172,7 +172,7 @@ contract('ComposableTopDown', function(accounts) {
 
   it('should transfer child to alice', async () => {
     //const tx = await composable.transferChild(alice, sampleNFT.address, 1, { from: bob });
-    const tx = await composable.contract.transferChild['address,address,uint256'](alice, sampleNFT.address, 1, { from: bob, gas: 500000 });
+    const tx = await composable.contract.transferChild['uint256,address,address,uint256'](1,alice, sampleNFT.address, 1, { from: bob, gas: 500000 });
     assert(tx, 'Transaction undefined');
   });
 
@@ -241,9 +241,9 @@ contract('ComposableTopDown', function(accounts) {
   **************************************/
   it('should safeTransferChild from composable 2 to composable 1', async () => {
     //address _to, address _childContract, uint256 _childTokenId, bytes _data
-    const safeTransferChild = ComposableTopDown.abi.filter(f => f.name === 'safeTransferChild' && f.inputs.length === 4)[0];
+    const safeTransferChild = ComposableTopDown.abi.filter(f => f.name === 'safeTransferChild' && f.inputs.length === 5)[0];
     const transferMethodTransactionData = web3Abi.encodeFunctionCall(
-      safeTransferChild, [composable.address, sampleNFT.address, 2, bytes1]
+      safeTransferChild, [2, composable.address, sampleNFT.address, 2, bytes1]
     );
     const tx = await web3.eth.sendTransaction({
       from: alice, to: composable.address, data: transferMethodTransactionData, value: 0, gas: 500000
@@ -501,9 +501,9 @@ contract('ComposableTopDown', function(accounts) {
       let nextTotalChildTokens;
       for (var j = 0; j < numChildTokensToRemove; j++) {
         const childTokenId = await composable.childTokenByIndex(aliceComposableTokenId, contractAddress, totalChildTokens - 1);
-        const safeTransferChild = ComposableTopDown.abi.filter(f => f.name === 'safeTransferChild' && f.inputs.length === 3)[0];
+        const safeTransferChild = ComposableTopDown.abi.filter(f => f.name === 'safeTransferChild' && f.inputs.length === 4)[0];
         const transferMethodTransactionData = web3Abi.encodeFunctionCall(
-          safeTransferChild, [alice, contractAddress, childTokenId.toNumber()]
+          safeTransferChild, [aliceComposableTokenId, alice, contractAddress, childTokenId.toNumber()]
         );
         const tx = await web3.eth.sendTransaction({
           from: alice, to: composable.address, data: transferMethodTransactionData, value: 0, gas: 500000
