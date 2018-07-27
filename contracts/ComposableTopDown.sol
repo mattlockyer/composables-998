@@ -14,14 +14,14 @@ interface ERC998ERC721TopDown {
     event ReceivedChild(address indexed _from, uint256 indexed _tokenId, address indexed _childContract, uint256 _childTokenId);
     event TransferChild(uint256 indexed tokenId, address indexed _to, address indexed _childContract, uint256 _childTokenId);
 
-    function rootOwnerOf(uint256 _tokenId) public view returns (bytes32 rootOwner);
-    function rootOwnerOfChild(address _childContract, uint256 _childTokenId) public view returns (bytes32 rootOwner);
-    function ownerOfChild(address _childContract, uint256 _childTokenId) external view returns (address parentTokenOwner, uint256 parentTokenId);
+    function rootOwnerOf(uint256 _tokenId) external view returns (bytes32 rootOwner);
+    function rootOwnerOfChild(address _childContract, uint256 _childTokenId) external view returns (bytes32 rootOwner);
+    function ownerOfChild(address _childContract, uint256 _childTokenId) external view returns (bytes32 parentTokenOwner, uint256 parentTokenId);
     function onERC721Received(address _operator, address _from, uint256 _childTokenId, bytes _data) external returns (bytes4);
-    function onERC998Removed(address _operator, address _toContract, uint256 _childTokenId, bytes _data) external;
-    function transferChild(address _to, address _childContract, uint256 _childTokenId) external;
-    function safeTransferChild(address _to, address _childContract, uint256 _childTokenId) external;
-    function safeTransferChild(address _to, address _childContract, uint256 _childTokenId, bytes _data) external;
+    function transferChild(uint256 _fromTokenId, address _to, address _childContract, uint256 _childTokenId) external;
+    function safeTransferChild(uint256 _fromTokenId, address _to, address _childContract, uint256 _childTokenId) external;
+    function safeTransferChild(uint256 _fromTokenId, address _to, address _childContract, uint256 _childTokenId, bytes _data) external;
+    function transferChildToParent(uint256 _fromTokenId, address _toContract, uint256 _toTokenId, address _childContract, uint256 _childTokenId, bytes _data) external;
     // getChild function enables older contracts like cryptokitties to be transferred into a composable
     // The _childContract must approve this contract. Then getChild can be called.
     function getChild(address _from, uint256 _tokenId, address _childContract, uint256 _childTokenId) external;
@@ -58,14 +58,17 @@ interface ERC20AndERC223 {
     function allowance(address _owner, address _spender) external view returns (uint256 remaining);
 }
 
-//contract ComposableTopDown is ERC721, ERC998ERC721TopDown, ERC998ERC721TopDownEnumerable,
-//ERC998ERC20TopDown, ERC998ERC20TopDownEnumerable {
+interface ERC998ERC721BottomUp {
+    function transferToParent(address _from, address _toContract, uint256 _toTokenId, uint256 _tokenId, bytes _data) external;
+}
+
 
 
 contract ComposableTopDown is ERC721, ERC998ERC721TopDown, ERC998ERC721TopDownEnumerable,
 ERC998ERC20TopDown, ERC998ERC20TopDownEnumerable {
-    // // return this.rootOwnerOf.selector ^ this.rootOwnerOfChild.selector;
-    bytes32 constant ERC998_MAGIC_VALUE = 0x62ff4869;
+    // return this.rootOwnerOf.selector ^ this.rootOwnerOfChild.selector ^
+    //   this.tokenOwnerOf.selector ^ this.ownerOfChild.selector;
+    bytes32 constant ERC998_MAGIC_VALUE = 0xcd740db5;
 
     uint256 tokenCount = 0;
 
@@ -121,14 +124,14 @@ ERC998ERC20TopDown, ERC998ERC20TopDownEnumerable {
     function rootOwnerOfChild(address _childContract, uint256 _childTokenId) public view returns (bytes32 rootOwner) {
         address rootOwnerAddress;
         if (_childContract != address(0)) {
-            (rootOwnerAddress, _childTokenId) = ownerOfChild(_childContract, _childTokenId);
+            (rootOwnerAddress, _childTokenId) = _ownerOfChild(_childContract, _childTokenId);
         }
         else {
             rootOwnerAddress = tokenIdToTokenOwner[_childTokenId];
         }
         // Case 1: Token owner is this contract and token.
         while (rootOwnerAddress == address(this)) {
-            (rootOwnerAddress, _childTokenId) = ownerOfChild(rootOwnerAddress, _childTokenId);
+            (rootOwnerAddress, _childTokenId) = _ownerOfChild(rootOwnerAddress, _childTokenId);
         }
 
         bool callSuccess;
@@ -199,17 +202,32 @@ ERC998ERC20TopDown, ERC998ERC20TopDownEnumerable {
 
     function _transferFrom(address _from, address _to, uint256 _tokenId) private {
         address tokenOwner = tokenIdToTokenOwner[_tokenId];
+        require(tokenOwner != address(0));
         require(tokenOwner == _from);
         require(_to != address(0));
 
-        address rootOwner = address(rootOwnerOf(_tokenId));
-        require(rootOwner == msg.sender || tokenOwnerToOperators[rootOwner][msg.sender] ||
-        rootOwnerAndTokenIdToApprovedAddress[rootOwner][_tokenId] == msg.sender ||
-        tokenOwner == msg.sender || tokenOwnerToOperators[tokenOwner][msg.sender]);
+        if(msg.sender != _from) {
+            bytes32 rootOwner;
+            bool callSuccess;
+            // 0xed81cdda == rootOwnerOfChild(address,uint256)
+            bytes memory calldata = abi.encodeWithSelector(0xed81cdda, address(this), _tokenId);
+            assembly {
+                callSuccess := staticcall(gas, _from, add(calldata, 0x20), mload(calldata), calldata, 0x20)
+                if callSuccess {
+                    rootOwner := mload(calldata)
+                }
+            }
+            if(callSuccess == true) {
+                require(rootOwner >> 224 != ERC998_MAGIC_VALUE, "Token is child of other top down composable");
+            }
+            require(tokenOwnerToOperators[_from][msg.sender] ||
+            rootOwnerAndTokenIdToApprovedAddress[_from][_tokenId] == msg.sender);
+        }
 
         // clear approval
-        if (rootOwnerAndTokenIdToApprovedAddress[rootOwner][_tokenId] != address(0)) {
-            delete rootOwnerAndTokenIdToApprovedAddress[rootOwner][_tokenId];
+        if (rootOwnerAndTokenIdToApprovedAddress[_from][_tokenId] != address(0)) {
+            delete rootOwnerAndTokenIdToApprovedAddress[_from][_tokenId];
+            emit Approval(_from, address(0), _tokenId);
         }
 
         // remove and transfer token
@@ -220,14 +238,6 @@ ERC998ERC20TopDown, ERC998ERC20TopDownEnumerable {
             tokenOwnerToTokenCount[_to]++;
         }
         emit Transfer(_from, _to, _tokenId);
-
-
-        //0x0da719ec == "onERC998Removed(address,address,uint256,bytes)"
-        bytes memory calldata = abi.encodeWithSelector(0x0da719ec, msg.sender, _to, _tokenId, "");
-        assembly {
-            let success := call(gas, _from, 0, add(calldata, 0x20), mload(calldata), calldata, 0)
-        }
-
 
     }
 
@@ -300,15 +310,9 @@ ERC998ERC20TopDown, ERC998ERC20TopDownEnumerable {
         }
     }
 
-    function onERC998Removed(address _operator, address _toContract, uint256 _childTokenId, bytes _data) external {
-        uint256 tokenId = childTokenOwner[msg.sender][_childTokenId];
-        removeChild(tokenId, msg.sender, _childTokenId);
-    }
-
-
-    function safeTransferChild(address _to, address _childContract, uint256 _childTokenId) external {
-        (address tokenOwner, uint256 tokenId) = ownerOfChild(_childContract, _childTokenId);
-        require(tokenOwner != address(0));
+    function safeTransferChild(uint256 _fromTokenId, address _to, address _childContract, uint256 _childTokenId) external {
+        (address tokenOwner, uint256 tokenId) = _ownerOfChild(_childContract, _childTokenId);
+        require(tokenId == _fromTokenId);
         require(_to != address(0));
         address rootOwner = address(rootOwnerOf(tokenId));
         require(rootOwner == msg.sender || tokenOwnerToOperators[rootOwner][msg.sender] ||
@@ -319,9 +323,9 @@ ERC998ERC20TopDown, ERC998ERC20TopDownEnumerable {
         emit TransferChild(tokenId, _to, _childContract, _childTokenId);
     }
 
-    function safeTransferChild(address _to, address _childContract, uint256 _childTokenId, bytes _data) external {
-        (address tokenOwner, uint256 tokenId) = ownerOfChild(_childContract, _childTokenId);
-        require(tokenOwner != address(0));
+    function safeTransferChild(uint256 _fromTokenId, address _to, address _childContract, uint256 _childTokenId, bytes _data) external {
+        (address tokenOwner, uint256 tokenId) = _ownerOfChild(_childContract, _childTokenId);
+        require(tokenId == _fromTokenId);
         require(_to != address(0));
         address rootOwner = address(rootOwnerOf(tokenId));
         require(rootOwner == msg.sender || tokenOwnerToOperators[rootOwner][msg.sender] ||
@@ -332,9 +336,9 @@ ERC998ERC20TopDown, ERC998ERC20TopDownEnumerable {
         emit TransferChild(tokenId, _to, _childContract, _childTokenId);
     }
 
-    function transferChild(address _to, address _childContract, uint256 _childTokenId) external {
-        (address tokenOwner, uint256 tokenId) = ownerOfChild(_childContract, _childTokenId);
-        require(tokenOwner != address(0));
+    function transferChild(uint256 _fromTokenId, address _to, address _childContract, uint256 _childTokenId) external {
+        (address tokenOwner, uint256 tokenId) = _ownerOfChild(_childContract, _childTokenId);
+        require(tokenId == _fromTokenId);
         require(_to != address(0));
         address rootOwner = address(rootOwnerOf(tokenId));
         require(rootOwner == msg.sender || tokenOwnerToOperators[rootOwner][msg.sender] ||
@@ -353,6 +357,20 @@ ERC998ERC20TopDown, ERC998ERC20TopDownEnumerable {
         emit TransferChild(tokenId, _to, _childContract, _childTokenId);
     }
 
+    function transferChildToParent(uint256 _fromTokenId, address _toContract, uint256 _toTokenId, address _childContract, uint256 _childTokenId, bytes _data) external {
+        (address tokenOwner, uint256 tokenId) = _ownerOfChild(_childContract, _childTokenId);
+        require(tokenId == _fromTokenId);
+        require(_toContract != address(0));
+        address rootOwner = address(rootOwnerOf(_fromTokenId));
+        require(rootOwner == msg.sender || tokenOwnerToOperators[rootOwner][msg.sender] ||
+        rootOwnerAndTokenIdToApprovedAddress[rootOwner][_fromTokenId] == msg.sender ||
+        tokenOwner == msg.sender || tokenOwnerToOperators[tokenOwner][msg.sender]);
+        removeChild(_fromTokenId, _childContract, _childTokenId);
+        ERC998ERC721BottomUp(_childContract).transferToParent(address(this), _toContract, _toTokenId, _childTokenId, _data);
+        emit TransferChild(_fromTokenId, _toContract, _childContract, _childTokenId);
+    }
+
+
     // this contract has to be approved first in _childContract
     function getChild(address _from, uint256 _tokenId, address _childContract, uint256 _childTokenId) external {
         receiveChild(_from, _tokenId, _childContract, _childTokenId);
@@ -360,8 +378,7 @@ ERC998ERC20TopDown, ERC998ERC20TopDownEnumerable {
         ERC721(_childContract).isApprovedForAll(_from, msg.sender) ||
         ERC721(_childContract).getApproved(_childTokenId) == msg.sender);
         ERC721(_childContract).transferFrom(_from, this, _childTokenId);
-        //cause out of gas error if circular ownership
-        rootOwnerOf(_tokenId);
+
     }
 
     function onERC721Received(address _from, uint256 _childTokenId, bytes _data) external returns (bytes4) {
@@ -385,8 +402,7 @@ ERC998ERC20TopDown, ERC998ERC20TopDownEnumerable {
         //require(this == ERC721Basic(msg.sender).ownerOf(_childTokenId), "This contract does not own the child token.");
 
         receiveChild(_from, tokenId, msg.sender, _childTokenId);
-        //cause out of gas error if circular ownership
-        rootOwnerOf(tokenId);
+
         return ERC721_RECEIVED_OLD;
     }
 
@@ -412,8 +428,6 @@ ERC998ERC20TopDown, ERC998ERC20TopDownEnumerable {
         //require(this == ERC721Basic(msg.sender).ownerOf(_childTokenId), "This contract does not own the child token.");
 
         receiveChild(_from, tokenId, msg.sender, _childTokenId);
-        //cause out of gas error if circular ownership
-        rootOwnerOf(tokenId);
         return ERC721_RECEIVED_NEW;
     }
 
@@ -432,10 +446,16 @@ ERC998ERC20TopDown, ERC998ERC20TopDownEnumerable {
         emit ReceivedChild(_from, _tokenId, _childContract, _childTokenId);
     }
 
-    function ownerOfChild(address _childContract, uint256 _childTokenId) public view returns (address parentTokenOwner, uint256 parentTokenId) {
+    function _ownerOfChild(address _childContract, uint256 _childTokenId) internal view returns (address parentTokenOwner, uint256 parentTokenId) {
         parentTokenId = childTokenOwner[_childContract][_childTokenId];
         require(parentTokenId > 0 || childTokenIndex[parentTokenId][_childContract][_childTokenId] > 0);
         return (tokenIdToTokenOwner[parentTokenId], parentTokenId);
+    }
+
+    function ownerOfChild(address _childContract, uint256 _childTokenId) external view returns (bytes32 parentTokenOwner, uint256 parentTokenId) {
+        parentTokenId = childTokenOwner[_childContract][_childTokenId];
+        require(parentTokenId > 0 || childTokenIndex[parentTokenId][_childContract][_childTokenId] > 0);
+        return (ERC998_MAGIC_VALUE << 224 | bytes32(tokenIdToTokenOwner[parentTokenId]), parentTokenId);
     }
 
     function childExists(address _childContract, uint256 _childTokenId) external view returns (bool) {
