@@ -133,6 +133,7 @@ contract ComposableBottomUp is ERC721, ERC998ERC721BottomUp, ERC998ERC721BottomU
     // Case 9: Token owner is ERC721 token owned by user
     function rootOwnerOf(uint256 _tokenId) public view returns (bytes32 rootOwner) {
         address rootOwnerAddress = tokenIdToTokenOwner[_tokenId].tokenOwner;
+        require(rootOwnerAddress != address(0));
         uint256 parentTokenId = tokenIdToTokenOwner[_tokenId].parentTokenId;
         bool isParent = parentTokenId > 0;
         parentTokenId--;
@@ -251,8 +252,7 @@ contract ComposableBottomUp is ERC721, ERC998ERC721BottomUp, ERC998ERC721BottomU
         address tokenOwner = tokenIdToTokenOwner[_tokenId].tokenOwner;
         require(tokenOwner != address(0));
         address rootOwner = address(rootOwnerOf(_tokenId));
-        require(rootOwner == msg.sender || tokenOwnerToOperators[rootOwner][msg.sender]
-        || tokenOwner == msg.sender || tokenOwnerToOperators[tokenOwner][msg.sender]);
+        require(rootOwner == msg.sender || tokenOwnerToOperators[rootOwner][msg.sender]);
 
         rootOwnerAndTokenIdToApprovedAddress[rootOwner][_tokenId] = _approved;
         emit Approval(rootOwner, _approved, _tokenId);
@@ -287,11 +287,11 @@ contract ComposableBottomUp is ERC721, ERC998ERC721BottomUp, ERC998ERC721BottomU
         parentToChildTokenIds[_fromContract][_fromTokenId].length--;
     }
 
-    function authenticateAndClearApproval(address _tokenOwner, uint256 _tokenId) private {
+    function authenticateAndClearApproval(uint256 _tokenId) private {
         address rootOwner = address(rootOwnerOf(_tokenId));
         address approvedAddress = rootOwnerAndTokenIdToApprovedAddress[rootOwner][_tokenId];
-        require(rootOwner == msg.sender || tokenOwnerToOperators[rootOwner][msg.sender] || approvedAddress == msg.sender ||
-        _tokenOwner == msg.sender || tokenOwnerToOperators[_tokenOwner][msg.sender]);
+        require(rootOwner == msg.sender || tokenOwnerToOperators[rootOwner][msg.sender] ||
+        approvedAddress == msg.sender);
 
         // clear approval
         if (approvedAddress != address(0)) {
@@ -301,13 +301,12 @@ contract ComposableBottomUp is ERC721, ERC998ERC721BottomUp, ERC998ERC721BottomU
     }
 
     function transferFromParent(address _fromContract, uint256 _fromTokenId, address _to, uint256 _tokenId, bytes _data) external {
-        address tokenOwner = tokenIdToTokenOwner[_tokenId].tokenOwner;
-        require(tokenOwner == _fromContract);
+        require(tokenIdToTokenOwner[_tokenId].tokenOwner == _fromContract);
         require(_to != address(0));
         uint256 parentTokenId = tokenIdToTokenOwner[_tokenId].parentTokenId;
         require(parentTokenId != 0, "Token does not have a parent token.");
         require(parentTokenId - 1 == _fromTokenId);
-        authenticateAndClearApproval(tokenOwner, _tokenId);
+        authenticateAndClearApproval(_tokenId);
 
         // remove and transfer token
         if (_fromContract != _to) {
@@ -333,11 +332,11 @@ contract ComposableBottomUp is ERC721, ERC998ERC721BottomUp, ERC998ERC721BottomU
     }
 
     function transferToParent(address _from, address _toContract, uint256 _toTokenId, uint256 _tokenId, bytes _data) external {
-        address tokenOwner = tokenIdToTokenOwner[_tokenId].tokenOwner;
-        require(tokenOwner != address(0));
-        require(tokenOwner == _from);
+        require(_from != address(0));
+        require(tokenIdToTokenOwner[_tokenId].tokenOwner == _from);
         require(_toContract != address(0));
         require(tokenIdToTokenOwner[_tokenId].parentTokenId == 0, "Cannot transfer from address when owned by a token.");
+        address approvedAddress = rootOwnerAndTokenIdToApprovedAddress[_from][_tokenId];
         if(msg.sender != _from) {
             bytes32 rootOwner;
             bool callSuccess;
@@ -352,12 +351,11 @@ contract ComposableBottomUp is ERC721, ERC998ERC721BottomUp, ERC998ERC721BottomU
             if(callSuccess == true) {
                 require(rootOwner >> 224 != ERC998_MAGIC_VALUE, "Token is child of other top down composable");
             }
-            require(tokenOwnerToOperators[_from][msg.sender] ||
-            rootOwnerAndTokenIdToApprovedAddress[_from][_tokenId] == msg.sender);
+            require(tokenOwnerToOperators[_from][msg.sender] || approvedAddress == msg.sender);
         }
 
         // clear approval
-        if (rootOwnerAndTokenIdToApprovedAddress[_from][_tokenId] != address(0)) {
+        if (approvedAddress != address(0)) {
             delete rootOwnerAndTokenIdToApprovedAddress[_from][_tokenId];
             emit Approval(_from, address(0), _tokenId);
         }
@@ -382,19 +380,17 @@ contract ComposableBottomUp is ERC721, ERC998ERC721BottomUp, ERC998ERC721BottomU
 
 
     function transferAsChild(address _fromContract, uint256 _fromTokenId, address _toContract, uint256 _toTokenId, uint256 _tokenId, bytes _data) external {
-        address tokenOwner = tokenIdToTokenOwner[_tokenId].tokenOwner;
-        require(tokenOwner == _fromContract);
+        require(tokenIdToTokenOwner[_tokenId].tokenOwner == _fromContract);
         require(_toContract != address(0));
         uint256 parentTokenId = tokenIdToTokenOwner[_tokenId].parentTokenId;
         require(parentTokenId > 0, "No parent token to transfer from.");
         require(parentTokenId - 1 == _fromTokenId);
         address rootOwner = address(rootOwnerOf(_tokenId));
+        address approvedAddress = rootOwnerAndTokenIdToApprovedAddress[rootOwner][_tokenId];
         require(rootOwner == msg.sender || tokenOwnerToOperators[rootOwner][msg.sender] ||
-        rootOwnerAndTokenIdToApprovedAddress[rootOwner][_tokenId] == msg.sender ||
-        tokenOwner == msg.sender || tokenOwnerToOperators[tokenOwner][msg.sender]);
-
+        approvedAddress == msg.sender);
         // clear approval
-        if (rootOwnerAndTokenIdToApprovedAddress[rootOwner][_tokenId] != address(0)) {
+        if (approvedAddress != address(0)) {
             delete rootOwnerAndTokenIdToApprovedAddress[rootOwner][_tokenId];
             emit Approval(rootOwner, address(0), _tokenId);
         }
@@ -425,12 +421,11 @@ contract ComposableBottomUp is ERC721, ERC998ERC721BottomUp, ERC998ERC721BottomU
     }
 
     function _transferFrom(address _from, address _to, uint256 _tokenId) private {
-        address tokenOwner = tokenIdToTokenOwner[_tokenId].tokenOwner;
-        require(tokenOwner != address(0));
-        require(tokenOwner == _from);
+        require(_from != address(0));
+        require(tokenIdToTokenOwner[_tokenId].tokenOwner == _from);
         require(tokenIdToTokenOwner[_tokenId].parentTokenId == 0, "Cannot transfer from address when owned by a token.");
         require(_to != address(0));
-
+        address approvedAddress = rootOwnerAndTokenIdToApprovedAddress[_from][_tokenId];
         if(msg.sender != _from) {
             bytes32 rootOwner;
             bool callSuccess;
@@ -445,12 +440,11 @@ contract ComposableBottomUp is ERC721, ERC998ERC721BottomUp, ERC998ERC721BottomU
             if(callSuccess == true) {
                 require(rootOwner >> 224 != ERC998_MAGIC_VALUE, "Token is child of other top down composable");
             }
-            require(tokenOwnerToOperators[_from][msg.sender] ||
-            rootOwnerAndTokenIdToApprovedAddress[_from][_tokenId] == msg.sender);
+            require(tokenOwnerToOperators[_from][msg.sender] || approvedAddress == msg.sender);
         }
 
         // clear approval
-        if (rootOwnerAndTokenIdToApprovedAddress[_from][_tokenId] != address(0)) {
+        if (approvedAddress != address(0)) {
             delete rootOwnerAndTokenIdToApprovedAddress[_from][_tokenId];
             emit Approval(_from, address(0), _tokenId);
         }
