@@ -217,12 +217,7 @@ contract('ComposableTopDown', function(accounts) {
   });
 
   it('should safeTransferFrom SampleNFT "2" to Composable "2"', async () => {
-    const transferMethodTransactionData = web3Abi.encodeFunctionCall(
-      SampleNFT.abi[13], [alice, composable.address, 2, bytes2]
-    );
-    const tx = await web3.eth.sendTransaction({
-      from: alice, to: sampleNFT.address, data: transferMethodTransactionData, value: 0, gas: 500000
-    });
+    const tx = await sampleNFT.contract.safeTransferFrom['address,address,uint256,bytes'](alice, composable.address, 2, bytes2, { from: alice, gas: 500000 });
     assert(tx != undefined, 'no tx using safeTransferFrom');
   });
 
