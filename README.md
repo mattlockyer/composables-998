@@ -1,17 +1,14 @@
 
 
-# Composable Non-Fungible Tokens (CNFTs)
+# Composable Non-Fungible Tokens (cNFTs)
 
-A *WIP (Work-In-Progress)* implementation and documentation repo for the *proposed* ERC-998 standard extension to ERC-721 on the Ethereum blockchain.  The purpose of this repo is to see the theory in action to gather insights and feedback on the *proposed* ERC-998 standard.
-
-Proposal: <br/>
-https://github.com/ethereum/EIPs/issues/998
-
-Here is a high-level overview of the *proposed* ERC-998 standard: <br/>
-https://medium.com/@mudgen/top-down-and-bottom-up-composables-whats-the-difference-and-which-one-should-you-use-db939f6acf1d
+An implementation and documentation repo for the ERC-998 standard extension to ERC-721 on the Ethereum blockchain.  The purpose of this repo is to see the theory in action, to gather insights and feedback on the ERC-998 standard and to provide a working implementation of ERC998 that people can use.
 
 Draft EIP 998: 
 https://github.com/ethereum/EIPs/blob/master/EIPS/eip-998.md
+
+Here is a high-level overview of the *proposed* ERC-998 standard: <br/>
+https://medium.com/@mudgen/top-down-and-bottom-up-composables-whats-the-difference-and-which-one-should-you-use-db939f6acf1d
 
 Discord and Discourse community: NFTy Magicians. <br/>
 https://discordapp.com/invite/3TtqP2C <br/>
@@ -21,6 +18,8 @@ Original Medium Post (code outdated): <br/>
 https://medium.com/coinmonks/introducing-crypto-composables-ee5701fde217
 
 Some follow-on Medium posts describing progress on the project: <br/>
+https://medium.com/coinmonks/crypto-composables-erc-998-update-6-in-the-wild-6ece410d263d
+https://medium.com/coinmonks/crypto-composables-erc-998-update-5-eb0a748a9889
 https://hackernoon.com/crypto-composables-erc-998-update-4-the-namening-7a05d28f3401 <br/>
 https://medium.com/coinmonks/crypto-composables-erc-998-update-3-first-contact-f3930a08636 <br/>
 https://medium.com/coinmonks/crypto-composables-erc-998-update-2-4b160df79836 <br/>
@@ -34,7 +33,7 @@ The repo activity is mainly in `/contracts` and `/test`.
 
 ## Architecture and Design
 
-CNFTs is intended to be a standard extension to ERC-721, the Non-Fungible Token standard for Ethereum.
+cNFTs is intended to be a standard extension to ERC-721, the Non-Fungible Token standard for Ethereum.
 
 As an extension, Composables are Non-Fungible Tokens (ERC-721) that can inherit from a standard interface the ability to own and manage other Non-Fungible Tokens (ERC-721) or Fungible Tokens (ERC-20), or both.
 
@@ -46,9 +45,11 @@ Go to our Discord and Discourse community: NFTy Magicians. See above for links.
 
 ## ERC998 Contributors
 
-Main project manager/coordinator/leader: Matt Lockyer, https://medium.com/@mattdlockyer
+Matt Lockyer started the ERC998 standard and developed the initial ideas and the initial implementation of ERC998. Matt Lockyer https://medium.com/@mattdlockyer
 
-The current implementation of ERC998 was written by Nick Mudge <nick@perfectabstractions.com>, https://medium.com/@mudgen.
+Main project manager/coordinator/leader: Nick Mudge <nick@mokens.io>, https://twitter.com/mudgen
+
+The current implementation of ERC998 was written by Nick Mudge
 
 People who have helped with the standard and/or implementation:
 * Nathalie Chan King Choy, https://github.com/nathalie-ckc
