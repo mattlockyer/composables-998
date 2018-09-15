@@ -7,7 +7,7 @@ An implementation and documentation repo for the ERC-998 standard extension to E
 Draft EIP 998: 
 https://github.com/ethereum/EIPs/blob/master/EIPS/eip-998.md
 
-Here is a high-level overview of the *proposed* ERC-998 standard: <br/>
+Here is a high-level overview of the ERC-998 standard: <br/>
 https://medium.com/@mudgen/top-down-and-bottom-up-composables-whats-the-difference-and-which-one-should-you-use-db939f6acf1d
 
 Discord and Discourse community: NFTy Magicians. <br/>
