@@ -55,4 +55,4 @@ People who have helped with the standard and/or implementation:
 * Nathalie Chan King Choy, https://github.com/nathalie-ckc
 * Maciej Górski, https://github.com/mg6maciej
 * Abhishek Chadha, https://medium.com/@abhishekchadha
-
+* Jordan Schalm <jordan.schalm@gmail.com>
