@@ -1,11 +1,9 @@
-
-
 //jshint ignore: start
 
-pragma solidity ^0.4.21;
+pragma solidity >=0.4.21 <0.6.0;
 
-import "zeppelin-solidity/contracts/token/ERC20/MintableToken.sol";
-import "zeppelin-solidity/contracts/math/SafeMath.sol";
+import "openzeppelin-solidity/contracts/token/ERC20/ERC20Mintable.sol";
+import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 
 /**
 * @title Contract that will work with ERC223 tokens.
@@ -19,18 +17,17 @@ contract ERC223Receiver {
    * @param _value Amount of tokens.
    * @param _data  Transaction metadata.
    */
-  function tokenFallback(address _from, uint _value, bytes _data) public;
+  function tokenFallback(address _from, uint _value, bytes memory _data) public;
 }
 
 
-contract SampleERC20 is MintableToken {
-  function transfer(address _to, uint _value, bytes _data) external {
+contract SampleERC20 is ERC20Mintable {
+  function transfer(address _to, uint _value, bytes calldata _data) external {
     uint codeLength;
     assembly {
       codeLength := extcodesize(_to)
     }
-    balances[msg.sender] = balances[msg.sender].sub(_value);
-    balances[_to] = balances[_to].add(_value);
+    _transfer(msg.sender, _to, _value);
     if(codeLength>0) {
       // Require proper transaction handling.
       ERC223Receiver receiver = ERC223Receiver(_to);

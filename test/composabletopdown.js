@@ -1,5 +1,3 @@
-
-
 //jshint ignore: start
 
 // contracts
@@ -10,6 +8,7 @@ const SampleERC20 = artifacts.require("./SampleERC20.sol");
 // tools for overloaded function calls
 const web3Abi = require('web3-eth-abi');
 const web3Utils = require('web3-utils');
+
 
 /**************************************
 * Helpers
@@ -42,6 +41,8 @@ const setupTestTokens = async (numberOfNfts, numberOfERC20s) => {
   }
   return [nfts, erc20s];
 }
+
+
 /**************************************
 * Tests
 **************************************/
@@ -64,13 +65,11 @@ contract('ComposableTopDown', function(accounts) {
 
   it('should be deployed, Composable', async () => {
 
-    composable = await  ComposableTopDown.deployed();
+    composable = await ComposableTopDown.deployed();
 
     //composable = await ComposableTopDown.new("okay", "tkn");
     //const receipt = await web3.eth.getTransactionReceipt(composable.transactionHash);
     //console.log("gas used:" + receipt.gasUsed)
-
-
 
     /**************************************
     * If you need event logging
@@ -79,7 +78,6 @@ contract('ComposableTopDown', function(accounts) {
     // logEvent(composable.Received);
     // logEvent(composable.Added);
     // logEvent(composable.TransferChild);
-
 
     assert(composable !== undefined, 'Composable was not deployed');
   });
@@ -96,25 +94,20 @@ contract('ComposableTopDown', function(accounts) {
 
   it('should mint a 721 token, Composable', async () => {
     const tokenId = await composable.mint.call(alice);
-    assert(tokenId.equals(1), 'Composable 721 token was not created or has wrong tokenId');
+    assert(tokenId.toNumber() === 1, 'Composable 721 token was not created or has wrong tokenId');
     const tx = await composable.mint(alice);
   });
 
   it('should mint a 721 token, SampleNFT', async () => {
     const tokenId = await sampleNFT.mint721.call(alice);
-    assert(tokenId.equals(1), 'SampleNFT 721 token was not created or has wrong tokenId');
+    assert(tokenId.toNumber() === 1, 'SampleNFT 721 token was not created or has wrong tokenId');
     const tx = await sampleNFT.mint721(alice);
   });
 
   it('should safeTransferFrom SampleNFT to Composable', async () => {
-    // HAD TO HAND ROLL THIS TEST BECAUSE TRUFFLE SUCKS!!!
-    // no call support to overloaded functions (thanks truffle / Consensys... ugh!)
-    // parent tokenId is a string because it's passed as bytes data
-    // safeTransferFrom is index 13 on zeppelin ERC721
-    const tx = await sampleNFT.contract.safeTransferFrom['address,address,uint256,bytes'](alice, composable.address, 1, bytes1, { from: alice, gas: 500000 });
-    /*
+    // This doesn't work atm, Truffle 5.0.0
+    //const tx = await sampleNFT.safeTransferFrom.call(alice, composable.address, 1, bytes1, { from: alice, gas: 500000 });
     const safeTransferFrom = SampleNFT.abi.filter(f => f.name === 'safeTransferFrom' && f.inputs.length === 4)[0];
-    //console.log(safeTransferFrom);
     const transferMethodTransactionData = web3Abi.encodeFunctionCall(
       safeTransferFrom, [alice, composable.address, 1, bytes1]
     );
@@ -122,7 +115,6 @@ contract('ComposableTopDown', function(accounts) {
     const tx = await web3.eth.sendTransaction({
       from: alice, to: sampleNFT.address, data: transferMethodTransactionData, value: 0, gas: 500000
     });
-    */
     assert(tx != undefined, 'no tx using safeTransferFrom');
   });
 
@@ -131,11 +123,11 @@ contract('ComposableTopDown', function(accounts) {
     assert(owned, 'composable does not own sampleNFT');
   });
 
-  it('should get owning token of Composable', async () => {
+    it('should get owning token of Composable', async () => {
       const result = await composable.ownerOfChild(sampleNFT.address, 1);
       //console.log(result);
       //console.log("tokenID:"+tokenId);
-      assert(result[1].equals(1), 'composable parent not found');
+      assert(result[1].toNumber() === 1, 'composable parent not found');
     });
 
   /**************************************
@@ -145,14 +137,12 @@ contract('ComposableTopDown', function(accounts) {
   it('should have 1 child contract address sampleNFT', async () => {
     const contracts = await composable.totalChildContracts.call(1);
     const contract = await composable.childContractByIndex.call(1, 0);
+    assert(contracts.toNumber() === 1 && contract === SampleNFT.address, 'composable does not have the right childs contract');
     //we have to guess the child contract instance to find the address?
     //do we need to know the child contract address?
     //why can't we return the child contracts array?
     const tokenId = await composable.childTokenByIndex.call(1,sampleNFT.address,0);
-
-    assert(tokenId.equals(1), 'call to composable.childTokenByIndex failed or was wrong.');
-
-    assert(contracts.toNumber() === 1 && contract === SampleNFT.address, 'composable does not have the right childs contract');
+    assert(tokenId.toNumber() === 1, 'call to composable.childTokenByIndex failed or was wrong.');
   });
 
   /**************************************
@@ -171,8 +161,7 @@ contract('ComposableTopDown', function(accounts) {
   });
 
   it('should transfer child to alice', async () => {
-    //const tx = await composable.transferChild(alice, sampleNFT.address, 1, { from: bob });
-    const tx = await composable.contract.transferChild['uint256,address,address,uint256'](1,alice, sampleNFT.address, 1, { from: bob, gas: 500000 });
+    const tx = await composable.transferChild(1, alice, sampleNFT.address, 1, { from: bob, gas: 500000 });
     assert(tx, 'Transaction undefined');
   });
 
@@ -201,13 +190,13 @@ contract('ComposableTopDown', function(accounts) {
 
   it('should mint a 721 token, Composable "2" for Alice', async () => {
     const tokenId = await composable.mint.call(alice);
-    assert(tokenId.equals(2), 'Composable 721 token was not created or has wrong tokenId');
+    assert(tokenId.toNumber() === 2, 'Composable 721 token was not created or has wrong tokenId');
     const tx = await composable.mint(alice);
   });
 
   it('should mint a 721 token, SampleNFT', async () => {
     const tokenId = await sampleNFT.mint721.call(alice);
-    assert(tokenId.equals(2), 'SampleNFT 721 token was not created or has wrong tokenId');
+    assert(tokenId.toNumber() === 2, 'SampleNFT 721 token was not created or has wrong tokenId');
     const tx = await sampleNFT.mint721(alice);
   });
 
@@ -217,7 +206,15 @@ contract('ComposableTopDown', function(accounts) {
   });
 
   it('should safeTransferFrom SampleNFT "2" to Composable "2"', async () => {
-    const tx = await sampleNFT.contract.safeTransferFrom['address,address,uint256,bytes'](alice, composable.address, 2, bytes2, { from: alice, gas: 500000 });
+    const safeTransferFrom = SampleNFT.abi.filter(f => f.name === 'safeTransferFrom' && f.inputs.length === 4)[0];
+    const transferMethodTransactionData = web3Abi.encodeFunctionCall(
+      safeTransferFrom, [alice, composable.address, 2, bytes2]
+    );
+    //console.log(transferMethodTransactionData);
+    const tx = await web3.eth.sendTransaction({
+      from: alice, to: sampleNFT.address, data: transferMethodTransactionData, value: 0, gas: 500000
+    });
+
     assert(tx != undefined, 'no tx using safeTransferFrom');
   });
 
@@ -248,9 +245,7 @@ contract('ComposableTopDown', function(accounts) {
 
   it('should have sampleNFT contract', async () => {
     const contract = await composable.childContractByIndex.call(1,0);
-
-    console.log(contract, composable.address, sampleNFT.address);
-
+    //console.log(contract, composable.address, sampleNFT.address);
     assert(contract === sampleNFT.address, 'composable does not have sampleNFT contract');
   });
 
@@ -274,9 +269,7 @@ contract('ComposableTopDown', function(accounts) {
     //we have to guess the child contract instance to find the address?
     //do we need to know the child contract address?
     //why can't we return the child contracts array?
-
     assert(contract === SampleNFT.address, 'testing example failed, wrong contract address');
-
     assert(contracts.toNumber() === 1 && contract === SampleNFT.address, 'composable does not have the right childs contract');
   });
 
@@ -288,16 +281,13 @@ contract('ComposableTopDown', function(accounts) {
 
   it('token 1 should own SampleNFT child token 2', async () => {
     const result = await composable.ownerOfChild.call(SampleNFT.address, 2);
-    const tokenId = result[1]
-    //console.log(tokenId);
-    assert(tokenId.equals(1), 'SampleNFT child token 2 is not owned by a composable token.');
+    assert(result.parentTokenId.toNumber() === 1, 'SampleNFT child token 2 is not owned by a composable token.');
   });
 
   it('should have 1 child of type sampleNFT of ID "2"', async () => {
     const childs = await composable.totalChildTokens.call(2, sampleNFT.address);
-    assert(childs.equals(0), 'composable does not own right childs');
+    assert(childs.toNumber() === 0, 'composable does not own right childs');
   });
-
 
   /**************************************
   * Checking Arrays
@@ -313,7 +303,7 @@ contract('ComposableTopDown', function(accounts) {
   /*
   it('should have 1 child of type Composable of ID "2"', async () => {
     const num = await composable.childsOwnedBy.call(1, composable.address);
-    assert(num.length === 1 && num[0].equals(2), 'composable does not own right child for Composable');
+    assert(num.length === 1 && num[0].toNumber() === 2, 'composable does not own right child for Composable');
   });
 
   it('should transfer child 2 to from composable 1 to composable 2', async () => {
@@ -325,14 +315,14 @@ contract('ComposableTopDown', function(accounts) {
     assert(contracts.length === 1 && contracts[0] === composable.address, 'composable does not have the right amount of contracts');
   });
   */
-  /**************************************
+
+ /**************************************
   * Testing ERC998PossessERC20
   **************************************/
 
-
   it('should mint a 721 token, Composable "3" for Alice', async () => {
     const tokenId = await composable.mint.call(alice);
-    assert(tokenId.equals(3), 'Composable 721 token was not created or has wrong tokenId');
+    assert(tokenId.toNumber() === 3, 'Composable 721 token was not created or has wrong tokenId');
     const tx = await composable.mint(alice);
   });
 
@@ -344,7 +334,7 @@ contract('ComposableTopDown', function(accounts) {
 
   it('should have an ERC20 balance', async () => {
     const balance = await sampleERC20.balanceOf.call(alice);
-    assert(balance.equals(1000), 'incorrect balance');
+    assert(balance.toNumber() === 1000, 'incorrect balance');
   });
 
   it('should transfer half the value from the ERC20 to the composable "3"', async () => {
@@ -358,15 +348,14 @@ contract('ComposableTopDown', function(accounts) {
     assert(tx, 'did not transfer');
   });
 
-
   it('should one contract in composable "3"', async () => {
     const contracts = await composable.totalERC20Contracts.call(3);
-    assert(contracts.equals(1), 'ERC20 balance of composable NOT correct');
+    assert(contracts.toNumber() === 1, 'ERC20 balance of composable NOT correct');
   });
 
   it('should have half the balance of sampleERC20 in composable "3"', async () => {
     const balance = await composable.balanceOfERC20.call(3, sampleERC20.address);
-    assert(balance.equals(500), 'ERC20 balance of composable NOT correct');
+    assert(balance.toNumber() === 500, 'ERC20 balance of composable NOT correct');
   });
 
   it('should transfer half the balance in composable "3" to bob', async () => {
@@ -386,19 +375,19 @@ contract('ComposableTopDown', function(accounts) {
 
   it('composable "3" should have 250 tokens', async () => {
     const balance = await composable.balanceOfERC20.call(3, sampleERC20.address);
-    assert(balance.equals(250), 'ERC20 balance of composable NOT correct');
+    assert(balance.toNumber() == 250, 'ERC20 balance of composable NOT correct');
   });
 
   it('bob should have 250 tokens', async () => {
     const balanceOf = await sampleERC20.balanceOf.call(bob);
     //console.log(balanceOf.toNumber());
-    assert(balanceOf.equals(250), 'ERC20 balance of composable NOT correct');
+    assert(balanceOf.toNumber() === 250, 'ERC20 balance of composable NOT correct');
   });
 
   /**************************************
   * Multi Token tests
   **************************************/
-  
+
   it('should return the correct number of totalTokenContracts and balances after ERC20 contracts are added', async () => {
     const aliceComposableTokenId = 2;
     const composableOwnerId = await composable.ownerOf(aliceComposableTokenId);
@@ -418,13 +407,13 @@ contract('ComposableTopDown', function(accounts) {
       });
       const balance = await composable.balanceOfERC20.call(aliceComposableTokenId, erc20s[i].address);
       assert(
-        balance.equals(transferedAmount),
+        balance.toNumber() === transferedAmount,
         `Expected token #${i} to have a balance of ${transferedAmount} but got ${balance}`
       );
     }
     const numAddedTokenContracts = await composable.totalERC20Contracts(aliceComposableTokenId);
     assert(
-      numAddedTokenContracts.equals(numTokens),
+      numAddedTokenContracts.toNumber() === numTokens,
       `Expected ${numTokens} totalTokenContracts but got ${numAddedTokenContracts}`);
   });
 
@@ -449,13 +438,13 @@ contract('ComposableTopDown', function(accounts) {
       }
       const numNFTChildren = await composable.totalChildTokens(aliceComposableTokenId, nfts[i].address);
       assert(
-        numNFTChildren.equals(mintedTokens.length),
+        numNFTChildren.toNumber() === mintedTokens.length,
         `Expected number of totalChildTokens to be ${mintedTokens.length} but got ${numNFTChildren}`
       );
     }
     const totalContracts =  await composable.totalChildContracts(aliceComposableTokenId)
     assert(
-      totalContracts.equals(numNFTs),
+      totalContracts.toNumber() === numNFTs,
       `Expected totalChildContracts to be ${numNFTs} but got ${totalContracts}`
     );
   });
@@ -505,14 +494,14 @@ contract('ComposableTopDown', function(accounts) {
         });
         nextTotalChildTokens = await composable.totalChildTokens(aliceComposableTokenId, contractAddress);
         assert(
-          nextTotalChildTokens.equals(totalChildTokens - 1),
+          nextTotalChildTokens.toNumber() === (totalChildTokens - 1),
           `Expected totalChildTokens to be ${totalChildTokens - 1} after removing contract ${i} at address ${contractAddress} but got ${nextTotalChildTokens}`
         );
         totalChildTokens = nextTotalChildTokens;
       }
       nextTotalChildContracts = await composable.totalChildContracts(aliceComposableTokenId);
       assert(
-        nextTotalChildContracts.equals(totalChildContracts - 1),
+        nextTotalChildContracts.toNumber() === (totalChildContracts - 1),
         `Expected totalChildContracts to be ${totalChildContracts - 1} after removing tokens for contract ${contractAddress} but got ${nextTotalChildContracts}`
       );
       totalChildContracts = nextTotalChildContracts;
